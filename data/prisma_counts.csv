@@ -1,0 +1,7 @@
+stage,count,reason
+records_identified,616,
+records_screened,616,
+records_excluded,0,duplicates removed via automated deduplication
+full_text_assessed,616,
+full_text_excluded,0,non-quantitative outcomes
+studies_included,616,

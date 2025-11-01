@@ -1,0 +1,452 @@
+[
+  {
+    "pmid": "Mock1",
+    "title": "Epigenetic Study on Cancer Prevention 1",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2022-10-15",
+    "doi": "10.1000/mock.1",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 208 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock2",
+    "title": "Epigenetic Study on Cancer Prevention 2",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2015-03-06",
+    "doi": "10.1000/mock.2",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 375 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock3",
+    "title": "Epigenetic Study on Cancer Prevention 3",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2024-08-07",
+    "doi": "10.1000/mock.3",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 300 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock4",
+    "title": "Epigenetic Study on Cancer Prevention 4",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2024-01-17",
+    "doi": "10.1000/mock.4",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 430 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock5",
+    "title": "Epigenetic Study on Cancer Prevention 5",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2012-07-27",
+    "doi": "10.1000/mock.5",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 223 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock6",
+    "title": "Epigenetic Study on Cancer Prevention 6",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2023-10-16",
+    "doi": "10.1000/mock.6",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 135 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock7",
+    "title": "Epigenetic Study on Cancer Prevention 7",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2024-09-19",
+    "doi": "10.1000/mock.7",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 231 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock8",
+    "title": "Epigenetic Study on Cancer Prevention 8",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2011-12-11",
+    "doi": "10.1000/mock.8",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 443 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock9",
+    "title": "Epigenetic Study on Cancer Prevention 9",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2020-01-13",
+    "doi": "10.1000/mock.9",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 427 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock10",
+    "title": "Epigenetic Study on Cancer Prevention 10",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2017-06-06",
+    "doi": "10.1000/mock.10",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 379 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock11",
+    "title": "Epigenetic Study on Cancer Prevention 11",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2016-09-18",
+    "doi": "10.1000/mock.11",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 469 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock12",
+    "title": "Epigenetic Study on Cancer Prevention 12",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2021-08-28",
+    "doi": "10.1000/mock.12",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 75 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock13",
+    "title": "Epigenetic Study on Cancer Prevention 13",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2014-02-21",
+    "doi": "10.1000/mock.13",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 216 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock14",
+    "title": "Epigenetic Study on Cancer Prevention 14",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2017-06-17",
+    "doi": "10.1000/mock.14",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 117 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock15",
+    "title": "Epigenetic Study on Cancer Prevention 15",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2012-05-31",
+    "doi": "10.1000/mock.15",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 251 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock16",
+    "title": "Epigenetic Study on Cancer Prevention 16",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2021-06-17",
+    "doi": "10.1000/mock.16",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 387 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock17",
+    "title": "Epigenetic Study on Cancer Prevention 17",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2023-04-10",
+    "doi": "10.1000/mock.17",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 379 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock18",
+    "title": "Epigenetic Study on Cancer Prevention 18",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2013-05-09",
+    "doi": "10.1000/mock.18",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 448 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock19",
+    "title": "Epigenetic Study on Cancer Prevention 19",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2021-07-11",
+    "doi": "10.1000/mock.19",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 287 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock20",
+    "title": "Epigenetic Study on Cancer Prevention 20",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2024-10-21",
+    "doi": "10.1000/mock.20",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 73 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock21",
+    "title": "Epigenetic Study on Cancer Prevention 21",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2020-08-02",
+    "doi": "10.1000/mock.21",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 297 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock22",
+    "title": "Epigenetic Study on Cancer Prevention 22",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2011-07-22",
+    "doi": "10.1000/mock.22",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 445 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock23",
+    "title": "Epigenetic Study on Cancer Prevention 23",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2023-08-07",
+    "doi": "10.1000/mock.23",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 161 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock24",
+    "title": "Epigenetic Study on Cancer Prevention 24",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2010-07-25",
+    "doi": "10.1000/mock.24",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 471 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock25",
+    "title": "Epigenetic Study on Cancer Prevention 25",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2024-09-05",
+    "doi": "10.1000/mock.25",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 375 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock26",
+    "title": "Epigenetic Study on Cancer Prevention 26",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2011-11-10",
+    "doi": "10.1000/mock.26",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 436 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock27",
+    "title": "Epigenetic Study on Cancer Prevention 27",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2010-02-21",
+    "doi": "10.1000/mock.27",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 166 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock28",
+    "title": "Epigenetic Study on Cancer Prevention 28",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2019-10-28",
+    "doi": "10.1000/mock.28",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 372 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock29",
+    "title": "Epigenetic Study on Cancer Prevention 29",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2010-10-18",
+    "doi": "10.1000/mock.29",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 418 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock30",
+    "title": "Epigenetic Study on Cancer Prevention 30",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2017-12-26",
+    "doi": "10.1000/mock.30",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 302 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock31",
+    "title": "Epigenetic Study on Cancer Prevention 31",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2022-12-01",
+    "doi": "10.1000/mock.31",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 303 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock32",
+    "title": "Epigenetic Study on Cancer Prevention 32",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2020-07-05",
+    "doi": "10.1000/mock.32",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 420 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock33",
+    "title": "Epigenetic Study on Cancer Prevention 33",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2012-02-04",
+    "doi": "10.1000/mock.33",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 86 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock34",
+    "title": "Epigenetic Study on Cancer Prevention 34",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2020-05-25",
+    "doi": "10.1000/mock.34",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 58 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock35",
+    "title": "Epigenetic Study on Cancer Prevention 35",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2020-07-10",
+    "doi": "10.1000/mock.35",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 412 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock36",
+    "title": "Epigenetic Study on Cancer Prevention 36",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2015-08-09",
+    "doi": "10.1000/mock.36",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 212 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock37",
+    "title": "Epigenetic Study on Cancer Prevention 37",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2018-02-27",
+    "doi": "10.1000/mock.37",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 261 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock38",
+    "title": "Epigenetic Study on Cancer Prevention 38",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2019-10-14",
+    "doi": "10.1000/mock.38",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 172 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock39",
+    "title": "Epigenetic Study on Cancer Prevention 39",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2010-01-24",
+    "doi": "10.1000/mock.39",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 419 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock40",
+    "title": "Epigenetic Study on Cancer Prevention 40",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2014-04-27",
+    "doi": "10.1000/mock.40",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 343 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock41",
+    "title": "Epigenetic Study on Cancer Prevention 41",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2010-07-19",
+    "doi": "10.1000/mock.41",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 267 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock42",
+    "title": "Epigenetic Study on Cancer Prevention 42",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2017-10-02",
+    "doi": "10.1000/mock.42",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 285 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock43",
+    "title": "Epigenetic Study on Cancer Prevention 43",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2019-03-24",
+    "doi": "10.1000/mock.43",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 401 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock44",
+    "title": "Epigenetic Study on Cancer Prevention 44",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2012-04-30",
+    "doi": "10.1000/mock.44",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 178 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock45",
+    "title": "Epigenetic Study on Cancer Prevention 45",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2020-02-17",
+    "doi": "10.1000/mock.45",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 262 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock46",
+    "title": "Epigenetic Study on Cancer Prevention 46",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2021-12-22",
+    "doi": "10.1000/mock.46",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 198 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock47",
+    "title": "Epigenetic Study on Cancer Prevention 47",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2010-11-15",
+    "doi": "10.1000/mock.47",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 333 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock48",
+    "title": "Epigenetic Study on Cancer Prevention 48",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2014-01-25",
+    "doi": "10.1000/mock.48",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 438 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock49",
+    "title": "Epigenetic Study on Cancer Prevention 49",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2018-02-01",
+    "doi": "10.1000/mock.49",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 101 participants. Results show significant epigenetic changes associated with cancer risk."
+  },
+  {
+    "pmid": "Mock50",
+    "title": "Epigenetic Study on Cancer Prevention 50",
+    "authors": "Smith J, Johnson A, Williams B",
+    "journal": "Journal of Epigenetics",
+    "pubdate": "2014-02-23",
+    "doi": "10.1000/mock.50",
+    "abstract": "This study examines epigenetic modifications in cancer prevention. DNA methylation was assessed in 305 participants. Results show significant epigenetic changes associated with cancer risk."
+  }
+]
