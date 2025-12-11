@@ -8,10 +8,13 @@ from docx.oxml import OxmlElement
 import os
 
 # File Paths
-input_md = r"d:\research-automation\Epigenetics research\re_research_2025\manuscript_v2.md"
-input_csv = r"d:\research-automation\Epigenetics research\re_research_2025\data\extracted_data.csv"
-output_docx = r"d:\research-automation\Epigenetics research\re_research_2025\manuscript_submission_packaged.docx"
-assets_dir = r"d:\research-automation\Epigenetics research\re_research_2025\assets"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.dirname(script_dir) # re_research_2025 directory
+
+input_md = os.path.join(base_dir, "manuscript_v2.md")
+input_csv = os.path.join(base_dir, "data", "extracted_data.csv")
+output_docx = os.path.join(base_dir, "manuscript_submission_packaged.docx")
+assets_dir = os.path.join(base_dir, "assets")
 
 def create_element(name):
     return OxmlElement(name)

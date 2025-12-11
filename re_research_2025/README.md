@@ -1,6 +1,7 @@
 # Factors Influencing Epigenetics in Cancer Prevention (2024-2025 Re-Research)
 
-**Author**: Research Team (Lead: hssling)  
+**Author**: Dr. Siddalingaiah H S, Professor, Community Medicine, Shridevi Institute of Medical Sciences and Research Hospital, Tumkur  
+**Contact**: hssling@yahoo.com | 8941087719  
 **Date**: December 2025  
 **Version**: 2.0
 

@@ -63,9 +63,15 @@ def draw_dag():
     ax.annotate("", xy=(0.8, 0.19), xytext=(0.8, 0.31), arrowprops=arrow_props)
     ax.annotate("", xy=(0.8, 0.09), xytext=(0.8, 0.11), arrowprops=arrow_props)
     
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.join(script_dir, "../assets")
+    os.makedirs(output_dir, exist_ok=True)
+    
     plt.tight_layout()
-    plt.savefig(r"d:\research-automation\Epigenetics research\re_research_2025\assets\Figure_3_DAG.png", dpi=300)
-    print("Saved Figure_3_DAG.png")
+    output_path = os.path.join(output_dir, "Figure_3_DAG.png")
+    plt.savefig(output_path, dpi=300)
+    print(f"Saved Figure_3_DAG.png to {output_path}")
 
 if __name__ == "__main__":
     draw_dag()

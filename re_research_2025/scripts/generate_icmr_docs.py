@@ -5,13 +5,17 @@ import os
 import datetime
 
 # Output Directory
-OUTPUT_DIR = r"d:\research-automation\Epigenetics research\re_research_2025\submission_files"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.dirname(script_dir)
+OUTPUT_DIR = os.path.join(base_dir, "submission_files_final")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Manuscript Details
 TITLE = "Factors Influencing Epigenetics in Cancer Prevention: A Systematic Analysis of Recent Evidence (2024-2025)"
 RUNNING_TITLE = "Epigenetics in Cancer Prevention 2024-2025"
-AUTHORS = ["Research Team"] # Placeholder
+AUTHORS = [
+    "Dr. Siddalingaiah H S, Professor, Community Medicine, Shridevi Institute of Medical Sciences and Research Hospital, Tumkur (hssling@yahoo.com, 8941087719)"
+]
 WORD_COUNT = "Approx. 2000"
 TABLES_COUNT = "1"
 FIGURES_COUNT = "2"
