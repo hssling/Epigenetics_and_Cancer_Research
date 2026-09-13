@@ -55,7 +55,13 @@ class UsageRecord(BaseModel):
 
 
 def _render(record: dict[str, Any]) -> str:
-    abstract = record.get("abstract") or "[no abstract available]"
+    if "abstract" not in record:
+        raise ScreenerError(
+            f"record {record.get('record_id', '<unknown>')!r} has no 'abstract' key; "
+            "a malformed record must not be screened as though it simply lacked an "
+            "abstract"
+        )
+    abstract = record["abstract"] or "[no abstract available]"
     return (
         f"Title: {record['title']}\n"
         f"Journal: {record.get('journal') or '[not reported]'}\n"

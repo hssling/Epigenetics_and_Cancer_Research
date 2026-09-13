@@ -164,3 +164,28 @@ def test_missing_abstract_is_sent_as_an_explicit_marker(mocker):
     )
     content = client.messages.parse.call_args.kwargs["messages"][0]["content"]
     assert "[no abstract available]" in content
+
+
+def test_record_missing_the_abstract_key_raises(mocker):
+    """A malformed record must not be screened as though it lacked an abstract."""
+    parsed = ais.ScreenerOutput(
+        decision="include", criterion=None, confidence=0.9, reason="ok",
+    )
+    client = _client(mocker, parsed)
+    record = _record()
+    del record["abstract"]
+    with pytest.raises(ais.ScreenerError, match="abstract"):
+        ais.screen_record(client, record, "claude-opus-5", "P", "a" * 64, "screening")
+    client.messages.parse.assert_not_called()
+
+
+def test_empty_string_abstract_is_treated_as_absent(mocker):
+    parsed = ais.ScreenerOutput(
+        decision="unclear", criterion=None, confidence=0.2, reason="No abstract.",
+    )
+    client = _client(mocker, parsed)
+    ais.screen_record(
+        client, _record(abstract=""), "claude-opus-5", "P", "a" * 64, "screening"
+    )
+    content = client.messages.parse.call_args.kwargs["messages"][0]["content"]
+    assert "[no abstract available]" in content
