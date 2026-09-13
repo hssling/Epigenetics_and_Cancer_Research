@@ -113,6 +113,28 @@ def test_no_identifier_record_cannot_bridge_conflicting_identifiers():
     assert counts["input"] - counts["removed_total"] == counts["output"] == len(kept)
 
 
+def test_empty_titles_never_fuzzy_match_each_other():
+    """rapidfuzz.fuzz.ratio('', '') == 100.0, so two distinct records that both
+    happen to have an empty title, same year, and same first-author surname
+    must NOT be merged by the fuzzy-title rule.
+    """
+    records = [
+        _record("pubmed", "1", title="", year=2021, authors=("Lee K",)),
+        _record("embase", "2", title="", year=2021, authors=("Lee J",)),
+    ]
+    kept, counts = deduplicate(records)
+    assert len(kept) == 2, "distinct untitled records must not collapse into one"
+    assert counts["removed_fuzzy"] == 0
+
+
+def test_first_author_surname_handles_blank_author_string():
+    """An author entry of '' (no name on record) must not raise IndexError."""
+    records = [_record("pubmed", "1", authors=("",))]
+    kept, counts = deduplicate(records)
+    assert len(kept) == 1
+    assert counts["removed_total"] == 0
+
+
 def test_no_identifier_record_cannot_bridge_conflicting_pmids():
     """A survivor must learn PMID identifiers from records merged into it.
 

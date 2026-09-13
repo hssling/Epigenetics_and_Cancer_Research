@@ -26,7 +26,10 @@ def normalise_title(title: str) -> str:
 
 
 def _first_author_surname(record: SearchRecord) -> str:
-    return record.authors[0].split()[0].lower() if record.authors else ""
+    if not record.authors:
+        return ""
+    parts = record.authors[0].split()
+    return parts[0].lower() if parts else ""
 
 
 def _key(record: SearchRecord) -> str:
@@ -69,6 +72,10 @@ def deduplicate(
                 if doi is not None and existing["doi"] is not None and doi != existing["doi"]:
                     continue
                 if pmid is not None and existing["pmid"] is not None and pmid != existing["pmid"]:
+                    continue
+                # Empty titles must never match each other: rapidfuzz.fuzz.ratio("", "")
+                # is 100.0, which would otherwise collapse distinct untitled records.
+                if not norm_title or not existing["norm_title"]:
                     continue
                 if fuzz.ratio(existing["norm_title"], norm_title) >= fuzzy_threshold:
                     index, rule = position, "fuzzy_title"
