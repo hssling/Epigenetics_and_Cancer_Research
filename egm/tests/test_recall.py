@@ -142,3 +142,32 @@ def test_report_has_no_option_to_drop_a_block(tmp_path):
     source = inspect.getsource(recall.validate_recall)
     for forbidden in ("exclude_block", "drop_", "ignore_", "min_rate"):
         assert forbidden not in source
+
+
+def test_matches_scipy_across_a_grid_when_scipy_is_available():
+    """Cross-check the hand-rolled incomplete beta against a reference.
+
+    The continued fraction is easy to get subtly wrong — an earlier draft of
+    this module was wrong for most inputs while still looking plausible. This
+    pins the implementation to an independent reference wherever one exists.
+    """
+    scipy_stats = pytest.importorskip("scipy.stats")
+
+    cases = [(s, 1000) for s in (0, 1, 2, 5, 10, 50, 100, 500, 999, 1000)]
+    cases += [(s, n) for n in (5, 10, 30) for s in (0, 1, n // 2, n)]
+    cases += [(0, 10000), (37, 10000), (10000, 10000)]
+
+    worst = 0.0
+    for successes, n in cases:
+        low, high = clopper_pearson(successes, n, 0.95)
+        expected_low = (
+            0.0 if successes == 0
+            else scipy_stats.beta.ppf(0.025, successes, n - successes + 1)
+        )
+        expected_high = (
+            1.0 if successes == n
+            else scipy_stats.beta.ppf(0.975, successes + 1, n - successes)
+        )
+        worst = max(worst, abs(low - expected_low), abs(high - expected_high))
+
+    assert worst < 1e-9, f"max deviation from scipy: {worst:g}"
