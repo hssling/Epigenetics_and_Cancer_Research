@@ -12,7 +12,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 # tuple to Literal[...] happens to flatten at runtime but is not valid typing,
 # and Pydantic's schema builder should not depend on that behaviour. The test
 # `test_source_db_literal_matches_config` keeps the two in sync.
-SourceDB = Literal["pubmed", "embase", "wos", "central", "ctgov", "ictrp"]
+SourceDB = Literal[
+    "pubmed", "embase", "wos", "central", "ctgov", "ictrp", "europepmc"
+]
 
 
 class QuantitativeValue(BaseModel):
