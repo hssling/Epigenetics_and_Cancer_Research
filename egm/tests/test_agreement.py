@@ -33,6 +33,38 @@ def test_high_but_imperfect_agreement():
     assert low < kappa < high
 
 
+def test_kappa_ci_is_clamped_to_the_valid_range():
+    """Reconstructing the pre-fix behaviour: near-degenerate marginals push
+    the normal-approximation CI outside kappa's [-1, 1] parameter space. For
+    these inputs, kappa=0 and the raw (unclamped) bounds work out to about
+    -1.79 and +1.79 — outside the domain kappa is even defined on, and it
+    would be published as-is. Both bounds must be clamped to [-1, 1].
+    """
+    import math
+
+    human = ["include"] * 6
+    ai = ["include"] * 5 + ["exclude"]
+
+    # The raw, unclamped formula (what the code computed before the fix),
+    # reconstructed here to confirm this case actually breaks it.
+    n = len(human)
+    observed = sum(h == a for h, a in zip(human, ai)) / n
+    from collections import Counter
+    hc, ac = Counter(human), Counter(ai)
+    expected = sum((hc[l] / n) * (ac[l] / n) for l in set(hc) | set(ac))
+    kappa_raw = (observed - expected) / (1 - expected)
+    se = math.sqrt(observed * (1 - observed) / (n * (1 - expected) ** 2))
+    raw_low, raw_high = kappa_raw - 1.96 * se, kappa_raw + 1.96 * se
+    assert raw_high > 1.0 and raw_low < -1.0, (
+        "test input no longer reproduces an out-of-range CI"
+    )
+
+    kappa, low, high = cohens_kappa(human, ai)
+    assert kappa == pytest.approx(kappa_raw)
+    assert low == -1.0
+    assert high == 1.0
+
+
 def test_confidence_interval_narrows_with_more_data():
     """Imperfect agreement on purpose.
 
@@ -132,3 +164,69 @@ def test_compare_uses_the_latest_decision_when_one_supersedes_another(tmp_path):
     _write(ai_p, [("egm-1", "exclude", "not_human")], "ai")
 
     assert compare(human_p, ai_p, gate=0.75).disagreements == []
+
+
+# --- Fix 4: comparing a log against itself must not silently pass the gate -
+
+
+def test_compare_rejects_the_same_log_passed_as_both_human_and_ai(tmp_path):
+    """compare(human_log, human_log) must not report a perfect, meaningless
+    kappa=1.0 gate pass — that is what an accidental --human/--ai swap, or
+    passing one path twice, would otherwise produce silently.
+    """
+    human_p = tmp_path / "h.jsonl"
+    pairs = [(f"egm-{n}", "include" if n < 5 else "exclude",
+              None if n < 5 else "not_primary") for n in range(10)]
+    _write(human_p, pairs, "human")
+
+    with pytest.raises(ValueError, match="screener"):
+        compare(human_p, human_p, gate=0.75)
+
+
+def test_compare_rejects_ai_log_passed_as_human(tmp_path):
+    """Swapping --human and --ai must be caught, not silently accepted."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "include" if n < 5 else "exclude",
+              None if n < 5 else "not_primary") for n in range(10)]
+    _write(human_p, pairs, "human")
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="screener"):
+        compare(ai_p, human_p, gate=0.75)  # swapped
+
+
+# --- Fix 6: reports carry provenance, and refuse to blend two runs ---------
+
+
+def test_agreement_report_carries_model_and_prompt_provenance(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "include" if n < 5 else "exclude",
+              None if n < 5 else "not_primary") for n in range(10)]
+    _write(human_p, pairs, "human")
+    _write(ai_p, pairs, "ai")
+
+    report = compare(human_p, ai_p, gate=0.75)
+    assert report.model_id == "claude-opus-5"
+    assert report.prompt_sha256 == "a" * 64
+
+
+def test_agreement_report_raises_when_ai_log_spans_two_models(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "include", None) for n in range(5)]
+    _write(human_p, pairs, "human")
+    _write(ai_p, pairs, "ai")
+    append_decision(human_p, ScreeningDecision(
+        record_id="egm-other", pmid="99", decision="include", criterion=None,
+        confidence=None, reason=None, screener="human", model_id=None,
+        prompt_sha256=None, stage="calibration",
+        decided_at="2026-09-13T10:00:00Z", supersedes=None,
+    ))
+    append_decision(ai_p, ScreeningDecision(
+        record_id="egm-other", pmid="99", decision="include", criterion=None,
+        confidence=0.9, reason="r", screener="ai", model_id="claude-sonnet-5",
+        prompt_sha256="a" * 64, stage="calibration",
+        decided_at="2026-09-13T10:00:00Z", supersedes=None,
+    ))
+
+    with pytest.raises(ValueError, match="more than one AI model"):
+        compare(human_p, ai_p, gate=0.75)

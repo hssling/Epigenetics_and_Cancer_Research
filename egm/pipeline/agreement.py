@@ -11,7 +11,11 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from pipeline.screen_schema import ScreeningDecision, read_decisions
+from pipeline.screen_schema import (
+    ScreeningDecision,
+    read_decisions,
+    single_ai_provenance,
+)
 
 
 class AgreementReport(BaseModel):
@@ -27,6 +31,8 @@ class AgreementReport(BaseModel):
     disagreements: list[dict[str, Any]]
     gate: float
     gate_met: bool
+    model_id: Optional[str]
+    prompt_sha256: Optional[str]
 
 
 def cohens_kappa(human: list[str], ai: list[str]) -> tuple[float, float, float]:
@@ -55,8 +61,13 @@ def cohens_kappa(human: list[str], ai: list[str]) -> tuple[float, float, float]:
 
     kappa = (observed - expected) / (1 - expected)
 
+    # Conservative on purpose: an independent sweep found this normal-
+    # approximation SE conservative (wider than a bootstrap) near the gate,
+    # which is disclosed in the methods rather than replaced here.
     se = math.sqrt(observed * (1 - observed) / (n * (1 - expected) ** 2))
-    return kappa, kappa - 1.96 * se, kappa + 1.96 * se
+    low = max(-1.0, kappa - 1.96 * se)
+    high = min(1.0, kappa + 1.96 * se)
+    return kappa, low, high
 
 
 def _latest(decisions: list[ScreeningDecision]) -> dict[str, ScreeningDecision]:
@@ -75,6 +86,25 @@ def compare(
     """Compare two decision logs over the same records."""
     human = _latest(read_decisions(human_path))
     ai = _latest(read_decisions(ai_path))
+
+    bad_human = sorted(
+        f"{r} (screener={d.screener})" for r, d in human.items() if d.screener != "human"
+    )
+    if bad_human:
+        raise ValueError(
+            "--human log contains decisions not made by a human screener, e.g. "
+            f"{bad_human[:5]}; comparing a log against itself (or with "
+            "--human/--ai swapped) would silently pass the gate"
+        )
+    bad_ai = sorted(
+        f"{r} (screener={d.screener})" for r, d in ai.items() if d.screener != "ai"
+    )
+    if bad_ai:
+        raise ValueError(
+            "--ai log contains decisions not made by the ai screener, e.g. "
+            f"{bad_ai[:5]}; comparing a log against itself (or with "
+            "--human/--ai swapped) would silently pass the gate"
+        )
 
     only_human = sorted(set(human) - set(ai))
     only_ai = sorted(set(ai) - set(human))
@@ -115,6 +145,8 @@ def compare(
         if human[r].decision != ai[r].decision
     ]
 
+    model_id, prompt_sha256 = single_ai_provenance([ai[r] for r in record_ids])
+
     return AgreementReport(
         n=n,
         observed_agreement=observed,
@@ -126,4 +158,6 @@ def compare(
         disagreements=disagreements,
         gate=gate,
         gate_met=kappa >= gate,
+        model_id=model_id,
+        prompt_sha256=prompt_sha256,
     )

@@ -55,12 +55,14 @@ def _decision(path, record_id, decision, screener, confidence=None, criterion=No
 
 def test_no_false_negatives_reports_perfect_sensitivity_with_an_upper_bound(tmp_path):
     human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    ids = set()
     for n in range(100):
         rid = f"egm-{n}"
+        ids.add(rid)
         _decision(ai_p, rid, "exclude", "ai", confidence=0.9, criterion="not_primary")
         _decision(human_p, rid, "exclude", "human", criterion="not_primary")
 
-    report = validate_recall(human_p, ai_p, {"high": 1000})
+    report = validate_recall(human_p, ai_p, ids, {"high": 1000})
 
     assert report.false_negatives == 0
     assert report.sensitivity == 1.0
@@ -72,13 +74,15 @@ def test_no_false_negatives_reports_perfect_sensitivity_with_an_upper_bound(tmp_
 def test_false_negatives_are_counted_and_reported(tmp_path):
     """A human include among AI excludes is a false negative."""
     human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    ids = set()
     for n in range(100):
         rid = f"egm-{n}"
+        ids.add(rid)
         _decision(ai_p, rid, "exclude", "ai", confidence=0.9, criterion="not_primary")
         _decision(human_p, rid, "include" if n < 3 else "exclude", "human",
                   criterion=None if n < 3 else "not_primary")
 
-    report = validate_recall(human_p, ai_p, {"high": 1000})
+    report = validate_recall(human_p, ai_p, ids, {"high": 1000})
 
     assert report.false_negatives == 3
     assert report.sensitivity == pytest.approx(0.97)
@@ -88,13 +92,15 @@ def test_false_negatives_are_counted_and_reported(tmp_path):
 def test_human_unclear_counts_as_a_false_negative(tmp_path):
     """An 'unclear' the AI excluded should have reached a human. That is a miss."""
     human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    ids = set()
     for n in range(10):
         rid = f"egm-{n}"
+        ids.add(rid)
         _decision(ai_p, rid, "exclude", "ai", confidence=0.9, criterion="not_primary")
         _decision(human_p, rid, "unclear" if n == 0 else "exclude", "human",
                   criterion=None if n == 0 else "not_primary")
 
-    assert validate_recall(human_p, ai_p, {"high": 100}).false_negatives == 1
+    assert validate_recall(human_p, ai_p, ids, {"high": 100}).false_negatives == 1
 
 
 def test_validating_a_non_excluded_record_raises(tmp_path):
@@ -104,7 +110,7 @@ def test_validating_a_non_excluded_record_raises(tmp_path):
     _decision(human_p, "egm-1", "include", "human")
 
     with pytest.raises(ValueError, match="not excluded"):
-        validate_recall(human_p, ai_p, {"high": 10})
+        validate_recall(human_p, ai_p, {"egm-1"}, {"high": 10})
 
 
 def test_stratum_weighting_differs_from_the_raw_rate(tmp_path):
@@ -115,22 +121,193 @@ def test_stratum_weighting_differs_from_the_raw_rate(tmp_path):
     population rate is far lower because high-confidence records dominate.
     """
     human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    ids = set()
     for n in range(50):
         rid = f"egm-low{n}"
+        ids.add(rid)
         _decision(ai_p, rid, "exclude", "ai", confidence=0.2, criterion="not_primary")
         _decision(human_p, rid, "include" if n < 5 else "exclude", "human",
                   criterion=None if n < 5 else "not_primary")
     for n in range(50):
         rid = f"egm-high{n}"
+        ids.add(rid)
         _decision(ai_p, rid, "exclude", "ai", confidence=0.95, criterion="not_primary")
         _decision(human_p, rid, "exclude", "human", criterion="not_primary")
 
-    report = validate_recall(human_p, ai_p, {"low": 100, "high": 9900})
+    report = validate_recall(human_p, ai_p, ids, {"low": 100, "high": 9900})
 
     assert report.fn_rate == pytest.approx(0.05)
     assert report.weighted_fn_rate < 0.002
     assert set(report.by_stratum) == {"low", "high"}
     assert report.by_stratum["low"]["false_negatives"] == 5
+
+
+# --- Fix 1: implied_missed must come from the weighted rate, not the raw one --
+
+
+def test_implied_missed_uses_the_weighted_rate_not_the_raw_sample_rate(tmp_path):
+    """Reconstructing the pre-fix behaviour: implied_missed = fn_rate * total.
+
+    Low confidence is oversampled (50 of a 100-record stratum) and misses
+    heavily there (10 of 50); high confidence is undersampled relative to its
+    huge population (50 of a 9,000-record stratum) and never misses. The raw
+    sample rate (10/100 = 10%) wildly overstates the population rate once the
+    9,000 near-perfect high-confidence records are weighted in, so a correct
+    implied_missed must be far below what the raw rate would imply.
+    """
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    ids = set()
+    for n in range(50):
+        rid = f"egm-low{n}"
+        ids.add(rid)
+        _decision(ai_p, rid, "exclude", "ai", confidence=0.2, criterion="not_primary")
+        _decision(human_p, rid, "include" if n < 10 else "exclude", "human",
+                  criterion=None if n < 10 else "not_primary")
+    for n in range(50):
+        rid = f"egm-high{n}"
+        ids.add(rid)
+        _decision(ai_p, rid, "exclude", "ai", confidence=0.95, criterion="not_primary")
+        _decision(human_p, rid, "exclude", "human", criterion="not_primary")
+
+    stratum_sizes = {"low": 100, "high": 9000}
+    total_excluded = sum(stratum_sizes.values())
+    report = validate_recall(human_p, ai_p, ids, stratum_sizes)
+
+    # The raw (unweighted) sample false-negative rate, applied naively —
+    # this is what the pre-fix code produced.
+    raw_fn_low, raw_fn_high = clopper_pearson(
+        report.false_negatives, report.n_validated, 0.95
+    )
+    raw_implied_high = raw_fn_high * total_excluded
+
+    # The weighted rate must diverge sharply from the raw rate here (that is
+    # the whole point of stratification), so the correct implied_missed must
+    # sit far below the raw-rate projection.
+    assert report.implied_missed_high < raw_implied_high * 0.5
+
+    # And it must be internally consistent with the reported weighted bounds.
+    assert report.implied_missed_low == pytest.approx(
+        report.weighted_fn_rate_ci_low * total_excluded
+    )
+    assert report.implied_missed_high == pytest.approx(
+        report.weighted_fn_rate_ci_high * total_excluded
+    )
+    assert report.rate_basis == (
+        "implied_missed is derived from the stratum-weighted rate; fn_rate "
+        "is the unweighted sample rate"
+    )
+
+
+# --- Fix 2: a partial sample must not silently become the denominator ------
+
+
+def test_partial_human_screening_raises_instead_of_shrinking_the_denominator(tmp_path):
+    """200 of 1,000 drawn records screened must not silently report n=200."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    drawn_ids = set()
+    for n in range(1000):
+        rid = f"egm-{n}"
+        drawn_ids.add(rid)
+        _decision(ai_p, rid, "exclude", "ai", confidence=0.9, criterion="not_primary")
+    for n in range(200):
+        rid = f"egm-{n}"
+        _decision(human_p, rid, "exclude", "human", criterion="not_primary")
+
+    with pytest.raises(ValueError, match="partial sample"):
+        validate_recall(human_p, ai_p, drawn_ids, {"high": 1000})
+
+
+def test_full_human_screening_of_the_drawn_sample_succeeds(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    ids = set()
+    for n in range(20):
+        rid = f"egm-{n}"
+        ids.add(rid)
+        _decision(ai_p, rid, "exclude", "ai", confidence=0.9, criterion="not_primary")
+        _decision(human_p, rid, "exclude", "human", criterion="not_primary")
+
+    report = validate_recall(human_p, ai_p, ids, {"high": 100})
+    assert report.n_validated == 20
+
+
+# --- Fix 3: a stratum must never silently vanish or be assumed perfect -----
+
+
+def test_sample_stratum_absent_from_stratum_sizes_raises(tmp_path):
+    """A stratum in the sample but not in stratum_sizes would be dropped."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    ids = set()
+    for n in range(10):
+        rid = f"egm-{n}"
+        ids.add(rid)
+        _decision(ai_p, rid, "exclude", "ai", confidence=0.2, criterion="not_primary")
+        _decision(human_p, rid, "include" if n < 5 else "exclude", "human",
+                  criterion=None if n < 5 else "not_primary")
+
+    with pytest.raises(ValueError, match="absent from stratum_sizes"):
+        # "low" is the sampled stratum but stratum_sizes only knows "high".
+        validate_recall(human_p, ai_p, ids, {"high": 1000})
+
+
+def test_unsampled_stratum_is_never_assumed_zero(tmp_path):
+    """A stratum with population but zero sampled records is fully uncertain."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    ids = set()
+    for n in range(10):
+        rid = f"egm-{n}"
+        ids.add(rid)
+        _decision(ai_p, rid, "exclude", "ai", confidence=0.95, criterion="not_primary")
+        _decision(human_p, rid, "exclude", "human", criterion="not_primary")
+
+    # "mid" has population but zero sampled records.
+    report = validate_recall(human_p, ai_p, ids, {"high": 100, "mid": 900})
+
+    assert report.by_stratum["high"]["fn_rate"] == 0.0
+    # The unsampled "mid" stratum contributes full uncertainty (0.0 to 1.0),
+    # not a substituted 0 — so the upper bound must reflect it being nearly
+    # entirely unknown, dominating the tiny sampled "high" contribution.
+    assert report.weighted_fn_rate_ci_high > 0.85
+
+
+# --- Fix 6: reports carry provenance, and refuse to blend two runs ---------
+
+
+def test_recall_report_carries_model_and_prompt_provenance(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    ids = set()
+    for n in range(10):
+        rid = f"egm-{n}"
+        ids.add(rid)
+        _decision(ai_p, rid, "exclude", "ai", confidence=0.9, criterion="not_primary")
+        _decision(human_p, rid, "exclude", "human", criterion="not_primary")
+
+    report = validate_recall(human_p, ai_p, ids, {"high": 100})
+    assert report.model_id == "claude-opus-5"
+    assert report.prompt_sha256 == "a" * 64
+
+
+def test_recall_report_raises_when_sample_spans_two_models(tmp_path):
+    from pipeline.screen_schema import append_decision
+
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    ids = set()
+    for n in range(5):
+        rid = f"egm-{n}"
+        ids.add(rid)
+        _decision(ai_p, rid, "exclude", "ai", confidence=0.9, criterion="not_primary")
+        _decision(human_p, rid, "exclude", "human", criterion="not_primary")
+    rid = "egm-other-model"
+    ids.add(rid)
+    append_decision(ai_p, ScreeningDecision(
+        record_id=rid, pmid="99", decision="exclude", criterion="not_primary",
+        confidence=0.9, reason="r", screener="ai", model_id="claude-sonnet-5",
+        prompt_sha256="a" * 64, stage="validation",
+        decided_at="2026-09-13T10:00:00Z", supersedes=None,
+    ))
+    _decision(human_p, rid, "exclude", "human", criterion="not_primary")
+
+    with pytest.raises(ValueError, match="more than one AI model"):
+        validate_recall(human_p, ai_p, ids, {"high": 100})
 
 
 def test_report_has_no_option_to_drop_a_block(tmp_path):

@@ -98,13 +98,37 @@ def test_report_agreement_writes_a_json_report(tmp_path):
 
 def test_report_recall_writes_a_json_report(tmp_path):
     human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    records = []
     for n in range(50):
         rid = f"egm-{n}"
         _ai(ai_p, rid, "exclude", 0.9, "not_primary")
         _human(human_p, rid, "exclude", "not_primary")
+        records.append({"record_id": rid})
+
+    sample_p = tmp_path / "sample.json"
+    sample_p.write_text(json.dumps(records), encoding="utf-8")
 
     out = tmp_path / "recall.json"
-    report = report_recall.run(human_p, ai_p, out)
+    report = report_recall.run(human_p, ai_p, sample_p, out)
 
     assert report.false_negatives == 0
     assert json.loads(out.read_text(encoding="utf-8"))["sensitivity"] == 1.0
+
+
+def test_report_recall_raises_on_a_partial_sample(tmp_path):
+    """The registered denominator is the full drawn sample, not whatever
+    subset happens to have a human decision recorded."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    records = []
+    for n in range(50):
+        rid = f"egm-{n}"
+        _ai(ai_p, rid, "exclude", 0.9, "not_primary")
+        records.append({"record_id": rid})
+        if n < 10:
+            _human(human_p, rid, "exclude", "not_primary")
+
+    sample_p = tmp_path / "sample.json"
+    sample_p.write_text(json.dumps(records), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="partial sample"):
+        report_recall.run(human_p, ai_p, sample_p, tmp_path / "recall.json")

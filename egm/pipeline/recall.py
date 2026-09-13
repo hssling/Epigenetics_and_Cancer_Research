@@ -7,11 +7,15 @@ calculation.
 """
 import pathlib
 from collections import defaultdict
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from pipeline.screen_schema import ScreeningDecision, read_decisions
+from pipeline.screen_schema import (
+    ScreeningDecision,
+    read_decisions,
+    single_ai_provenance,
+)
 
 # Confidence below this is the "low" stratum, and so on. Boundaries are
 # recorded here so the stratification is reproducible from the code.
@@ -38,6 +42,11 @@ class RecallReport(BaseModel):
     total_excluded: int
     by_stratum: dict[str, dict[str, Any]]
     weighted_fn_rate: float
+    weighted_fn_rate_ci_low: float
+    weighted_fn_rate_ci_high: float
+    rate_basis: str
+    model_id: Optional[str]
+    prompt_sha256: Optional[str]
 
 
 def _beta_ppf(p: float, a: float, b: float) -> float:
@@ -155,10 +164,16 @@ def _latest(decisions: list[ScreeningDecision]) -> dict[str, ScreeningDecision]:
 def validate_recall(
     human_path: pathlib.Path,
     ai_path: pathlib.Path,
+    expected_record_ids: set[str],
     stratum_sizes: dict[str, int],
     confidence: float = 0.95,
 ) -> RecallReport:
     """Estimate screening recall from hand-screened AI exclusions.
+
+    `expected_record_ids` is the full drawn validation sample. The registered
+    denominator is that whole sample, not however much of it happens to have
+    a human decision recorded so far — an abandoned or partial screening
+    session must fail loudly rather than quietly publish a smaller n.
 
     `stratum_sizes` gives the population size of each confidence stratum
     across ALL AI exclusions, which is what makes the weighted estimate
@@ -167,6 +182,14 @@ def validate_recall(
     """
     human = _latest(read_decisions(human_path))
     ai = _latest(read_decisions(ai_path))
+
+    missing = expected_record_ids - set(human)
+    if missing:
+        raise ValueError(
+            f"{len(missing)} of {len(expected_record_ids)} drawn records have no human "
+            f"decision (e.g. {sorted(missing)[:5]}); recall cannot be estimated from a "
+            "partial sample — the registered denominator is the full drawn sample"
+        )
 
     shared = sorted(set(human) & set(ai))
     if not shared:
@@ -193,6 +216,13 @@ def validate_recall(
             per_stratum[stratum]["false_negatives"] += 1
             false_negatives += 1
 
+    unknown = set(per_stratum) - set(stratum_sizes)
+    if unknown:
+        raise ValueError(
+            f"sample contains strata absent from stratum_sizes: {sorted(unknown)}; "
+            "they would be dropped from the weighted estimate"
+        )
+
     n = len(shared)
     sensitivity = (n - false_negatives) / n
     sens_low, sens_high = clopper_pearson(n - false_negatives, n, confidence)
@@ -213,6 +243,29 @@ def validate_recall(
             "fn_rate": rate,
         }
 
+    # The raw fn_rate above comes from a sample that deliberately over-samples
+    # low-confidence exclusions, so it is not the rate to project onto the
+    # full excluded population. implied_missed must instead be built from the
+    # stratum-weighted rate — including its uncertainty, via the per-stratum
+    # Clopper-Pearson bounds under the same population weights. A stratum with
+    # population but no sampled records is fully uncertain (0.0 to 1.0), never
+    # assumed to be 0.
+    weighted_low = 0.0
+    weighted_high = 0.0
+    for stratum, size in stratum_sizes.items():
+        counts = per_stratum.get(stratum, {"n": 0, "false_negatives": 0})
+        share = size / total_excluded if total_excluded else 0.0
+        if counts["n"]:
+            s_low, s_high = clopper_pearson(
+                counts["false_negatives"], counts["n"], confidence
+            )
+        else:
+            s_low, s_high = 0.0, 1.0
+        weighted_low += s_low * share
+        weighted_high += s_high * share
+
+    model_id, prompt_sha256 = single_ai_provenance([ai[r] for r in shared])
+
     return RecallReport(
         n_validated=n,
         false_negatives=false_negatives,
@@ -222,9 +275,17 @@ def validate_recall(
         fn_rate=false_negatives / n,
         fn_rate_ci_low=fn_low,
         fn_rate_ci_high=fn_high,
-        implied_missed_low=fn_low * total_excluded,
-        implied_missed_high=fn_high * total_excluded,
+        implied_missed_low=weighted_low * total_excluded,
+        implied_missed_high=weighted_high * total_excluded,
         total_excluded=total_excluded,
         by_stratum=by_stratum,
         weighted_fn_rate=weighted,
+        weighted_fn_rate_ci_low=weighted_low,
+        weighted_fn_rate_ci_high=weighted_high,
+        rate_basis=(
+            "implied_missed is derived from the stratum-weighted rate; fn_rate "
+            "is the unweighted sample rate"
+        ),
+        model_id=model_id,
+        prompt_sha256=prompt_sha256,
     )

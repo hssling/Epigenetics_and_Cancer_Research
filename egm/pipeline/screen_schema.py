@@ -107,6 +107,38 @@ def append_decision(path: pathlib.Path, decision: ScreeningDecision) -> None:
         os.fsync(handle.fileno())
 
 
+def single_ai_provenance(
+    decisions: list[ScreeningDecision],
+) -> tuple[str, str]:
+    """Return the (model_id, prompt_sha256) shared by every AI decision.
+
+    A report is one comparison between one investigator and one model run
+    against one prompt. If the decisions being summarised span more than one
+    model or prompt, the report would silently blend two different
+    experiments under a single statistic — that is refused rather than
+    averaged away.
+    """
+    non_ai = [d.record_id for d in decisions if d.screener != "ai"]
+    if non_ai:
+        raise ValueError(
+            f"provenance requested from non-AI decisions: {sorted(non_ai)[:5]}"
+        )
+    if not decisions:
+        raise ValueError("cannot determine provenance from an empty decision list")
+
+    model_ids = {d.model_id for d in decisions}
+    prompt_hashes = {d.prompt_sha256 for d in decisions}
+    if len(model_ids) > 1:
+        raise ValueError(
+            f"decisions span more than one AI model: {sorted(model_ids)}"
+        )
+    if len(prompt_hashes) > 1:
+        raise ValueError(
+            f"decisions span more than one prompt: {sorted(prompt_hashes)}"
+        )
+    return next(iter(model_ids)), next(iter(prompt_hashes))
+
+
 def read_decisions(path: pathlib.Path) -> list[ScreeningDecision]:
     """Read a decision log. A missing file is an empty log, not an error."""
     path = pathlib.Path(path)
