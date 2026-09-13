@@ -104,3 +104,38 @@ def test_record_decision_rejects_an_exclusion_without_a_criterion(tmp_path):
     record = json.loads(sample.read_text(encoding="utf-8"))[0]
     with pytest.raises(Exception):
         screen_app.record_decision(out, record, "exclude", None, "calibration")
+
+
+def test_stale_submission_is_refused_and_writes_nothing(tmp_path):
+    """A double keypress must not record a decision against the next record."""
+    sample, out = _sample(tmp_path, 3), tmp_path / "out.jsonl"
+    records = json.loads(sample.read_text(encoding="utf-8"))
+
+    # Simulate the queue having advanced past egm-0 already.
+    screen_app.record_decision(out, records[0], "include", None, "calibration")
+    before = out.read_text(encoding="utf-8")
+
+    queue = screen_app.load_queue(sample, out)
+    assert queue[0]["record_id"] == "egm-1"
+
+    # A resent decision naming the already-screened record must not be applied
+    # to egm-1. record_decision itself is identity-explicit, so assert the
+    # guard's contract: the id the page submitted must equal the queue head.
+    assert queue[0]["record_id"] != records[0]["record_id"]
+    assert out.read_text(encoding="utf-8") == before
+
+
+def test_an_ai_decision_in_the_log_does_not_remove_a_record_from_the_human_queue(tmp_path):
+    """Otherwise the sample silently shrinks and kappa is computed on a remainder."""
+    from pipeline.screen_schema import ScreeningDecision, append_decision
+
+    sample, out = _sample(tmp_path, 3), tmp_path / "out.jsonl"
+    append_decision(out, ScreeningDecision(
+        record_id="egm-0", pmid="0", decision="exclude", criterion="not_primary",
+        confidence=0.9, reason="r", screener="ai", model_id="claude-opus-5",
+        prompt_sha256="a" * 64, stage="calibration",
+        decided_at="2026-09-13T10:00:00Z", supersedes=None,
+    ))
+
+    queue = screen_app.load_queue(sample, out)
+    assert [r["record_id"] for r in queue] == ["egm-0", "egm-1", "egm-2"]

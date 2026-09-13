@@ -33,9 +33,16 @@ from pipeline.screen_schema import (
 def load_queue(
     sample_path: pathlib.Path, out_path: pathlib.Path
 ) -> list[dict[str, Any]]:
-    """Records not yet screened, in sample order."""
+    """Records not yet screened BY A HUMAN, in sample order.
+
+    Filtering on screener matters: if this log ever contained AI decisions,
+    counting them as done would silently drop those records from the queue and
+    shrink the sample without anyone noticing.
+    """
     records = json.loads(pathlib.Path(sample_path).read_text(encoding="utf-8"))
-    done = {d.record_id for d in read_decisions(out_path)}
+    done = {
+        d.record_id for d in read_decisions(out_path) if d.screener == "human"
+    }
     return [r for r in records if r["record_id"] not in done]
 
 
@@ -48,7 +55,8 @@ def record_decision(
 ) -> ScreeningDecision:
     """Append one human decision. Amends append with `supersedes` set."""
     previous = [
-        d for d in read_decisions(out_path) if d.record_id == record["record_id"]
+        d for d in read_decisions(out_path)
+        if d.record_id == record["record_id"] and d.screener == "human"
     ]
     entry = ScreeningDecision(
         record_id=record["record_id"],
@@ -125,7 +133,8 @@ document.addEventListener("keydown", (ev) => {{
   }}
 }});
 function go(decision, criterion) {{
-  window.location = "/decide?decision=" + decision + "&criterion=" + criterion;
+  window.location = "/decide?record_id={html.escape(record["record_id"])}"
+    + "&decision=" + decision + "&criterion=" + criterion;
 }}
 </script>"""
 
@@ -155,9 +164,23 @@ def serve(
 
             if url.path == "/decide":
                 params = parse_qs(url.query)
+                submitted_id = params.get("record_id", [""])[0]
+                if not state["queue"]:
+                    self._send("<p>Queue is empty; nothing to record.</p>", status=409)
+                    return
+                record = state["queue"][0]
+                if submitted_id != record["record_id"]:
+                    self._send(
+                        "<!doctype html><meta charset='utf-8'>"
+                        "<p style='font:16px system-ui;margin:3rem'>Stale submission ignored: "
+                        f"this decision was for <code>{html.escape(submitted_id)}</code> but the "
+                        f"current record is <code>{html.escape(record['record_id'])}</code>. "
+                        "Nothing was written. <a href='/'>Continue</a>.</p>",
+                        status=409,
+                    )
+                    return
                 decision = params["decision"][0]
                 criterion = params.get("criterion", [""])[0] or None
-                record = state["queue"][0]
                 record_decision(out_path, record, decision, criterion, stage)
                 state["queue"] = state["queue"][1:]
                 self.send_response(303)
