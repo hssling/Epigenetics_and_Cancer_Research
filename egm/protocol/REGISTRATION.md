@@ -1,14 +1,29 @@
 # Registration status
 
-**Status:** NOT YET REGISTERED — screening must not begin.
+**Status: REGISTERED — pending approval.**
 
 | Field | Value |
 |---|---|
-| Registry | **OSF Registries** (primary) |
-| Registration ID | *pending* |
-| Submitted | *pending* |
-| Accepted | *pending* |
+| Registry | OSF Registries |
+| **Registration ID** | **3xtf2** |
+| **URL** | **https://osf.io/3xtf2** |
+| Template | Generalized Systematic Review Registration |
+| Submitted | 2026-09-13 22:50:20 |
+| Visibility | Public immediately (no embargo) |
+| Approval | Pending — awaiting contributor approval / 48-hour window |
 | Protocol version registered | v1.0 (`protocol.md`) |
+
+Cite as: Siddalingaiah H S. *Epigenetic Approaches in Health and Public Health
+Practice: An Evidence Gap Map Protocol.* OSF Registries, 2026. https://osf.io/3xtf2
+
+## Template choice
+
+Registered on the **Generalized Systematic Review Registration** template rather
+than Open-Ended Registration. Its sections (Review Methods, Search Strategy,
+Screening, Extraction, Synthesis and Quality Assessment) map directly onto this
+protocol, and the template explicitly covers "any other type of review",
+including evidence maps. A structured record is more informative and more
+checkable than free text.
 
 ## Venue: why not PROSPERO
 
@@ -51,7 +66,7 @@ recorded for this work.
 ## Gate
 
 Corpus retrieval may proceed before registration — retrieval is not screening.
-**Plan B (screening) must not start until the Registration ID above is filled in.**
+**Plan B (screening) may begin once the registration is APPROVED (currently pending).**
 This file is the gate.
 
 ## Investigator declarations (supplied 2026-09-13)
