@@ -1,0 +1,221 @@
+"""Recall validation for AI screening.
+
+Produces the sensitivity estimate and confidence interval the registration
+commits to publishing, including when the result is unflattering. There is
+deliberately no parameter that excludes a block of the sample from the
+calculation.
+"""
+import pathlib
+from collections import defaultdict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
+
+from pipeline.screen_schema import ScreeningDecision, read_decisions
+
+# Confidence below this is the "low" stratum, and so on. Boundaries are
+# recorded here so the stratification is reproducible from the code.
+STRATUM_BOUNDARIES: tuple[tuple[str, float], ...] = (
+    ("low", 0.5),
+    ("mid", 0.8),
+    ("high", 1.01),
+)
+
+
+class RecallReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    n_validated: int
+    false_negatives: int
+    sensitivity: float
+    sensitivity_ci_low: float
+    sensitivity_ci_high: float
+    fn_rate: float
+    fn_rate_ci_low: float
+    fn_rate_ci_high: float
+    implied_missed_low: float
+    implied_missed_high: float
+    total_excluded: int
+    by_stratum: dict[str, dict[str, Any]]
+    weighted_fn_rate: float
+
+
+def _beta_ppf(p: float, a: float, b: float) -> float:
+    """Inverse beta CDF by bisection.
+
+    Used for exact Clopper-Pearson bounds without a SciPy dependency.
+    """
+    if a <= 0:
+        return 0.0
+    if b <= 0:
+        return 1.0
+
+    lo, hi = 0.0, 1.0
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        if _beta_cdf(mid, a, b) < p:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def _beta_cdf(x: float, a: float, b: float) -> float:
+    """Regularised incomplete beta function via its continued fraction."""
+    import math
+
+    if x <= 0:
+        return 0.0
+    if x >= 1:
+        return 1.0
+
+    # Special case for a=1: I_x(1, b) = 1 - (1-x)^b (exact)
+    if a == 1.0:
+        return 1.0 - (1.0 - x) ** b
+
+    # Special case for b=1: I_x(a, 1) = x^a (exact)
+    if b == 1.0:
+        return x ** a
+
+    # Use symmetry: if x > (a+1)/(a+b+2), compute 1 - I_{1-x}(b, a)
+    # to improve numerical convergence
+    if x > (a + 1.0) / (a + b + 2.0):
+        return 1.0 - _beta_cdf(1.0 - x, b, a)
+
+    lbeta = math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b)
+    front = math.exp(math.log(x) * a + math.log(1 - x) * b - lbeta) / a
+
+    f, c, d = 1.0, 1.0, 0.0
+    for i in range(300):
+        m = i // 2
+        if i == 0:
+            numerator = 1.0
+        elif i % 2 == 0:
+            numerator = (m * (b - m) * x) / ((a + 2 * m - 1) * (a + 2 * m))
+        else:
+            numerator = -((a + m) * (a + b + m) * x) / ((a + 2 * m) * (a + 2 * m + 1))
+
+        d = 1.0 + numerator * d
+        d = 1e-30 if abs(d) < 1e-30 else d
+        d = 1.0 / d
+
+        c = 1.0 + numerator / c
+        c = 1e-30 if abs(c) < 1e-30 else c
+
+        f *= c * d
+        if abs(1.0 - c * d) < 1e-12:
+            break
+
+    result = front * (f - 1.0)
+    return min(max(result, 0.0), 1.0)
+
+
+def clopper_pearson(
+    successes: int, n: int, confidence: float = 0.95
+) -> tuple[float, float]:
+    """Exact binomial confidence interval (Clopper-Pearson)."""
+    if n <= 0:
+        raise ValueError("n must be positive")
+    if successes > n:
+        raise ValueError(f"successes ({successes}) cannot exceed n ({n})")
+    if successes < 0:
+        raise ValueError("successes cannot be negative")
+
+    alpha = 1.0 - confidence
+    low = 0.0 if successes == 0 else _beta_ppf(alpha / 2, successes, n - successes + 1)
+    high = 1.0 if successes == n else _beta_ppf(
+        1 - alpha / 2, successes + 1, n - successes
+    )
+    return low, high
+
+
+def stratum_of(confidence: float) -> str:
+    for name, upper in STRATUM_BOUNDARIES:
+        if confidence < upper:
+            return name
+    return STRATUM_BOUNDARIES[-1][0]
+
+
+def _latest(decisions: list[ScreeningDecision]) -> dict[str, ScreeningDecision]:
+    latest: dict[str, ScreeningDecision] = {}
+    for decision in decisions:
+        latest[decision.record_id] = decision
+    return latest
+
+
+def validate_recall(
+    human_path: pathlib.Path,
+    ai_path: pathlib.Path,
+    stratum_sizes: dict[str, int],
+    confidence: float = 0.95,
+) -> RecallReport:
+    """Estimate screening recall from hand-screened AI exclusions.
+
+    `stratum_sizes` gives the population size of each confidence stratum
+    across ALL AI exclusions, which is what makes the weighted estimate
+    meaningful: the sample deliberately over-samples low-confidence records,
+    so its raw rate is not the population rate.
+    """
+    human = _latest(read_decisions(human_path))
+    ai = _latest(read_decisions(ai_path))
+
+    shared = sorted(set(human) & set(ai))
+    if not shared:
+        raise ValueError("no records appear in both decision logs")
+
+    not_excluded = [r for r in shared if ai[r].decision != "exclude"]
+    if not_excluded:
+        raise ValueError(
+            "validation sample contains records not excluded by AI "
+            f"({not_excluded[:5]}); recall is estimated from exclusions only"
+        )
+
+    per_stratum: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"n": 0, "false_negatives": 0}
+    )
+    false_negatives = 0
+
+    for record_id in shared:
+        stratum = stratum_of(ai[record_id].confidence)
+        per_stratum[stratum]["n"] += 1
+        # The AI excluded it. If a human would not have, it is a miss —
+        # 'unclear' counts, because that record should have reached a human.
+        if human[record_id].decision in ("include", "unclear"):
+            per_stratum[stratum]["false_negatives"] += 1
+            false_negatives += 1
+
+    n = len(shared)
+    sensitivity = (n - false_negatives) / n
+    sens_low, sens_high = clopper_pearson(n - false_negatives, n, confidence)
+    fn_low, fn_high = clopper_pearson(false_negatives, n, confidence)
+
+    total_excluded = sum(stratum_sizes.values())
+
+    weighted = 0.0
+    by_stratum: dict[str, dict[str, Any]] = {}
+    for stratum, size in stratum_sizes.items():
+        counts = per_stratum.get(stratum, {"n": 0, "false_negatives": 0})
+        rate = counts["false_negatives"] / counts["n"] if counts["n"] else 0.0
+        weighted += rate * (size / total_excluded) if total_excluded else 0.0
+        by_stratum[stratum] = {
+            "population": size,
+            "sampled": counts["n"],
+            "false_negatives": counts["false_negatives"],
+            "fn_rate": rate,
+        }
+
+    return RecallReport(
+        n_validated=n,
+        false_negatives=false_negatives,
+        sensitivity=sensitivity,
+        sensitivity_ci_low=sens_low,
+        sensitivity_ci_high=sens_high,
+        fn_rate=false_negatives / n,
+        fn_rate_ci_low=fn_low,
+        fn_rate_ci_high=fn_high,
+        implied_missed_low=fn_low * total_excluded,
+        implied_missed_high=fn_high * total_excluded,
+        total_excluded=total_excluded,
+        by_stratum=by_stratum,
+        weighted_fn_rate=weighted,
+    )
