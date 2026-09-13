@@ -79,6 +79,17 @@ def deduplicate(
             survivors[index]["merged_from"].append(_key(record))
             if survivors[index]["rule"] == "unique":
                 survivors[index]["rule"] = rule
+            # Backfill identifiers learned from the merged record. Without this a
+            # survivor that was created identifier-free stays that way forever, and
+            # can bridge two records whose identifiers actually conflict.
+            if doi is not None:
+                if survivors[index]["doi"] is None:
+                    survivors[index]["doi"] = doi
+                by_doi.setdefault(doi, index)
+            if pmid is not None:
+                if survivors[index]["pmid"] is None:
+                    survivors[index]["pmid"] = pmid
+                by_pmid.setdefault(pmid, index)
             continue
 
         survivors.append({

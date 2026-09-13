@@ -93,3 +93,37 @@ def test_fuzzy_matches_when_only_one_record_has_an_identifier():
     kept, counts = deduplicate(records)
     assert len(kept) == 1
     assert counts["removed_fuzzy"] == 1
+
+
+def test_no_identifier_record_cannot_bridge_conflicting_identifiers():
+    """A survivor must learn identifiers from records merged into it.
+
+    Otherwise a record carrying no DOI acts as a bridge: the first
+    DOI-bearing record merges into it, and a second record with a
+    CONFLICTING DOI then merges too, because the survivor still looks
+    identifier-free.
+    """
+    records = [
+        _record("embase", "1", doi=None, title="DNA methylation and diet in adults"),
+        _record("wos", "2", doi="10.1/x", title="DNA methylation and diet in adults"),
+        _record("central", "3", doi="10.1/y", title="DNA methylation and diet in adults"),
+    ]
+    kept, counts = deduplicate(records)
+    assert len(kept) == 2, "conflicting DOIs must not be bridged into one record"
+    assert counts["input"] - counts["removed_total"] == counts["output"] == len(kept)
+
+
+def test_no_identifier_record_cannot_bridge_conflicting_pmids():
+    """A survivor must learn PMID identifiers from records merged into it.
+
+    Mirror test for PMID: a record carrying no PMID acts as a bridge for
+    conflicting PMIDs if identifiers are not backfilled on merge.
+    """
+    records = [
+        _record("embase", "1", pmid=None, title="Epigenetic study"),
+        _record("pubmed", "2", pmid="111", title="Epigenetic study"),
+        _record("central", "3", pmid="222", title="Epigenetic study"),
+    ]
+    kept, counts = deduplicate(records)
+    assert len(kept) == 2, "conflicting PMIDs must not be bridged into one record"
+    assert counts["input"] - counts["removed_total"] == counts["output"] == len(kept)
