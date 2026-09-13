@@ -17,6 +17,7 @@ import pathlib
 
 from pipeline import pubmed
 from pipeline.dedup import deduplicate
+from pipeline.integrity import IntegrityError
 from pipeline.prisma import PrismaFlow, PrismaStage
 from pipeline.provenance import RunManifest, query_hash, write_artefact
 from pipeline.query import build_pubmed_query
@@ -30,7 +31,24 @@ def build_corpus(output_dir: pathlib.Path, retmax: int, dry_run: bool) -> dict[s
     if dry_run:
         return {"available": pubmed.count(query_string)}
 
+    # NCBI caps esearch retmax at 10,000. If more records are available than
+    # retmax allows, the corpus would be silently truncated with no signal
+    # anywhere in the artefacts -- so check BEFORE searching, not after.
+    available = pubmed.count(query_string)
+    if available > retmax:
+        raise IntegrityError(
+            f"{available} records available for this query but retmax={retmax}; "
+            "the corpus would be silently truncated. Raise --retmax or narrow the query."
+        )
+
     pmids = pubmed.search(query_string, retmax=retmax)
+    expected = min(available, retmax)
+    if len(pmids) != expected:
+        raise IntegrityError(
+            f"esearch returned {len(pmids)} pmids but expected {expected} "
+            f"(available={available}, retmax={retmax})"
+        )
+
     records = pubmed.fetch_summaries(pmids, query_hash_value=query_hash(query_string))
     deduped, counts = deduplicate(records)
 
@@ -49,6 +67,12 @@ def build_corpus(output_dir: pathlib.Path, retmax: int, dry_run: bool) -> dict[s
     ])
     flow.validate()
 
+    notes = (
+        f"available={available}; retmax={retmax}; dedup rules: {counts}; "
+        "abstracts: all null -- esummary.fcgi does not return abstract text; "
+        "this corpus is NOT yet screened-ready for title/abstract screening "
+        "until abstracts are backfilled via an efetch call keyed on pmid."
+    )
     write_artefact(
         output_dir / "raw" / "pubmed_corpus.json",
         [record.model_dump() for record in deduped],
@@ -56,7 +80,7 @@ def build_corpus(output_dir: pathlib.Path, retmax: int, dry_run: bool) -> dict[s
             query_string=query_string,
             source_db="pubmed",
             record_count=len(deduped),
-            notes=f"retmax={retmax}; dedup rules: {counts}",
+            notes=notes,
         ),
     )
 
