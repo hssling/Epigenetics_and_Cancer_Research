@@ -972,8 +972,14 @@ def test_high_but_imperfect_agreement():
 
 
 def test_confidence_interval_narrows_with_more_data():
-    small = cohens_kappa(["include", "exclude"] * 10, ["include", "exclude"] * 10)
-    large = cohens_kappa(["include", "exclude"] * 200, ["include", "exclude"] * 200)
+    """Imperfect agreement on purpose.
+
+    At perfect agreement observed == 1, so the standard error is exactly zero
+    and BOTH intervals have zero width — the comparison would be 0 < 0 and
+    the test would fail on correct code.
+    """
+    small = cohens_kappa(["include"] * 18 + ["exclude"] * 2, ["include"] * 20)
+    large = cohens_kappa(["include"] * 180 + ["exclude"] * 20, ["include"] * 200)
     assert (large[2] - large[1]) < (small[2] - small[1])
 
 
