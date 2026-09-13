@@ -76,10 +76,16 @@ Corpus retrieval may proceed before registration — retrieval is not screening.
 **GATE OPEN.** The registration is approved and public, so the registration
 precondition for screening is satisfied.
 
-One precondition remains, and it is independent of registration: all 9,088
-records currently hold a null abstract. The registration itself commits to
-completing the efetch abstract backfill before screening begins. Screening must
-not start until that is done.
+The abstract-backfill precondition is also met. Completed 2026-09-13 via
+efetch: 9,083 of 9,088 records now carry an abstract; 5 genuinely have none
+(0.06%) and carry null rather than an empty string. Written as a new artefact,
+`search/raw/pubmed_corpus_with_abstracts.json`; the original corpus is
+unmodified, raw exports being append-only.
+
+**Screening may now begin.** Remaining Plan B prerequisite (not a gate, but do
+it first): `stratified_sample` has no test of its own, and Plan B uses it to draw
+both the kappa-300 calibration set and the 1,000-record recall sample. A bug
+there would corrupt a headline statistic.
 This file is the gate.
 
 ## Investigator declarations (supplied 2026-09-13)
