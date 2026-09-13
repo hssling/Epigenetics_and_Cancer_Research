@@ -13,8 +13,9 @@ from pipeline.integrity import (
 )
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-PIPELINE = REPO / "egm" / "pipeline"
+EGM_ROOT = REPO / "egm"
 RNG_ALLOWED = {"sampling.py"}
+RNG_EXCLUDED_DIR_NAMES = {"tests"}
 
 
 def test_modal_share_of_uniform_column_is_one():
@@ -73,15 +74,19 @@ def test_detector_catches_the_actual_fabricated_dataset():
     assert found["population_size"][1] > 0.70
 
 
-def test_no_rng_imported_in_data_path():
-    """Spec section 8.3 rule 3. Only sampling.py may import random.
+def _find_rng_offenders(
+    root: pathlib.Path, allowed: set[str], excluded_dir_names: set[str] = frozenset()
+) -> list[str]:
+    """Walk `root` for RNG usage. Shared by the production guard and its own tests.
 
     Checks all AST forms: direct imports, attribute access (np.random),
     and dynamic imports via __import__ or importlib.
     """
     offenders: list[str] = []
-    for path in PIPELINE.rglob("*.py"):
-        if path.name in RNG_ALLOWED:
+    for path in root.rglob("*.py"):
+        if path.name in allowed:
+            continue
+        if excluded_dir_names & set(path.relative_to(root).parts[:-1]):
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
@@ -126,7 +131,70 @@ def test_no_rng_imported_in_data_path():
                         if isinstance(node.args[0].value, str) and "random" in node.args[0].value:
                             offenders.append(f"{path.name}: {func_name}(...) with 'random'")
 
+    return offenders
+
+
+def test_no_rng_imported_in_data_path():
+    """Spec section 8.3 rule 3. Only sampling.py may import random.
+
+    Scans the whole egm/ tree (not just egm/pipeline): spec section 8.1 adds
+    screening/, coding/, analysis/ alongside pipeline/ later, and the guard
+    must cover those automatically rather than needing to be told about each
+    new directory. egm/tests/ is excluded because test files legitimately
+    construct RNG code strings as fixtures (see the test_rng_detection_*
+    tests below), not because they are trusted to import random for real.
+    """
+    offenders = _find_rng_offenders(EGM_ROOT, RNG_ALLOWED, RNG_EXCLUDED_DIR_NAMES)
     assert offenders == [], f"RNG must not appear in the data path: {offenders}"
+
+
+def test_rng_guard_scans_full_egm_tree_not_just_pipeline():
+    """Regression for the directory-scoped guard: the production scan root
+    must be egm/ itself, not egm/pipeline/, so it covers files the pipeline
+    subtree doesn't -- e.g. this test file's own fixtures, or a future
+    screening/coding/analysis package added alongside pipeline/.
+    """
+    assert EGM_ROOT == REPO / "egm", (
+        "the RNG guard's root must be egm/, not a subdirectory such as "
+        "egm/pipeline -- otherwise directories added later (screening/, "
+        "coding/, analysis/ per spec 8.1) would never be scanned"
+    )
+    all_py_files = list(EGM_ROOT.rglob("*.py"))
+    pipeline_only = list((REPO / "egm" / "pipeline").rglob("*.py"))
+    assert len(all_py_files) > len(pipeline_only), (
+        "the RNG guard's root must cover more than egm/pipeline alone"
+    )
+
+
+def test_rng_guard_catches_offenders_outside_pipeline_directory(tmp_path):
+    """Directly demonstrates the fixed defect: scoping the scan to a
+    pipeline/-only subdirectory (the pre-fix behaviour) misses RNG usage
+    placed in a sibling directory such as screening/; scanning the whole
+    root catches it, while still allowing sampling.py and tests/.
+    """
+    pipeline_dir = tmp_path / "pipeline"
+    pipeline_dir.mkdir()
+    (pipeline_dir / "clean.py").write_text("x = 1\n", encoding="utf-8")
+
+    screening_dir = tmp_path / "screening"
+    screening_dir.mkdir()
+    (screening_dir / "score.py").write_text("import random\n", encoding="utf-8")
+
+    (tmp_path / "sampling.py").write_text("import random\n", encoding="utf-8")
+
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "test_fixture.py").write_text("import random\n", encoding="utf-8")
+
+    # Old, directory-scoped behaviour: scanning only pipeline/ misses the
+    # offender that lives in screening/.
+    assert _find_rng_offenders(pipeline_dir, RNG_ALLOWED) == []
+
+    # Fixed behaviour: scanning the whole tree catches it, and still
+    # allowlists sampling.py and skips tests/.
+    offenders = _find_rng_offenders(tmp_path, RNG_ALLOWED, RNG_EXCLUDED_DIR_NAMES)
+    assert len(offenders) == 1
+    assert "score.py" in offenders[0]
 
 
 def test_rng_detection_catches_import_random():
