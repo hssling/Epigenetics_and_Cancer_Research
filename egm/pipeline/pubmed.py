@@ -32,19 +32,37 @@ def _get(endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
         except Exception as exc:  # noqa: BLE001 - re-raised as PubMedError below
             last = exc
             time.sleep(NCBI_RATE_LIMIT_SECONDS * (attempt + 1) * 3)
-    raise PubMedError(f"{endpoint} failed after {MAX_ATTEMPTS} attempts: {last}")
+    raise PubMedError(f"{endpoint} failed after {MAX_ATTEMPTS} attempts: {last}") from last
+
+
+def _esearch_result(body: dict[str, Any], query: str) -> dict[str, Any]:
+    """Extract esearchresult, raising PubMedError on an NCBI error payload."""
+    result = body.get("esearchresult")
+    if result is None:
+        raise PubMedError(f"esearch response had no 'esearchresult' key for query: {query!r}")
+    if "ERROR" in result:
+        raise PubMedError(f"NCBI rejected the query ({result['ERROR']!r}): {query!r}")
+    if "ERROR" in body:
+        raise PubMedError(f"NCBI returned an error ({body['ERROR']!r}) for query: {query!r}")
+    return result
 
 
 def count(query: str) -> int:
     """Number of records matching `query`, without retrieving them."""
     body = _get("esearch.fcgi", {"db": "pubmed", "term": query, "retmax": 0})
-    return int(body["esearchresult"]["count"])
+    result = _esearch_result(body, query)
+    if "count" not in result:
+        raise PubMedError(f"esearch response missing 'count' for query: {query!r}")
+    return int(result["count"])
 
 
 def search(query: str, retmax: int) -> list[str]:
     """PMIDs matching `query`, up to `retmax`."""
     body = _get("esearch.fcgi", {"db": "pubmed", "term": query, "retmax": retmax})
-    return list(body["esearchresult"]["idlist"])
+    result = _esearch_result(body, query)
+    if "idlist" not in result:
+        raise PubMedError(f"esearch response missing 'idlist' for query: {query!r}")
+    return list(result["idlist"])
 
 
 def _parse_year(pubdate: str) -> Optional[int]:

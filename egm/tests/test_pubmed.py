@@ -88,3 +88,45 @@ def test_retries_then_raises(mocker):
     with pytest.raises(pubmed.PubMedError):
         pubmed.count("q")
     assert get.call_count == 3
+
+
+def test_pubmed_error_preserves_original_exception(mocker):
+    mocker.patch.object(
+        pubmed.requests, "get", side_effect=pubmed.requests.RequestException("boom")
+    )
+    mocker.patch.object(pubmed.time, "sleep")
+    with pytest.raises(pubmed.PubMedError) as exc:
+        pubmed.count("q")
+    assert exc.value.__cause__ is not None
+    assert isinstance(exc.value.__cause__, pubmed.requests.RequestException)
+
+
+def test_ncbi_error_in_result_raises_pubmed_error(mocker):
+    mocker.patch.object(
+        pubmed.requests, "get",
+        return_value=_FakeResponse({"esearchresult": {"ERROR": "Invalid db name"}}),
+    )
+    with pytest.raises(pubmed.PubMedError) as exc:
+        pubmed.count("q")
+    assert "Invalid db name" in str(exc.value)
+    assert "PubMedError" not in str(exc.value.__cause__)
+
+
+def test_missing_count_raises_pubmed_error(mocker):
+    mocker.patch.object(
+        pubmed.requests, "get",
+        return_value=_FakeResponse({"esearchresult": {}}),
+    )
+    with pytest.raises(pubmed.PubMedError) as exc:
+        pubmed.count("q")
+    assert "count" in str(exc.value)
+
+
+def test_missing_idlist_raises_pubmed_error(mocker):
+    mocker.patch.object(
+        pubmed.requests, "get",
+        return_value=_FakeResponse({"esearchresult": {}}),
+    )
+    with pytest.raises(pubmed.PubMedError) as exc:
+        pubmed.search("q", retmax=10)
+    assert "idlist" in str(exc.value)
