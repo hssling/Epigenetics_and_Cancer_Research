@@ -78,3 +78,18 @@ def test_counts_reconcile():
     ]
     kept, counts = deduplicate(records)
     assert counts["input"] - counts["removed_total"] == counts["output"] == len(kept)
+
+
+def test_fuzzy_matches_when_only_one_record_has_an_identifier():
+    """Absent identifiers must not block a fuzzy merge — only conflicting ones do.
+
+    Real multi-database corpora mix records that carry a DOI with records
+    that do not. Requiring both to be identifier-free would under-deduplicate.
+    """
+    records = [
+        _record("embase", "1", doi=None, title="DNA methylation and diet in adults"),
+        _record("wos", "2", doi="10.1/x", title="DNA methylation and diet in adults"),
+    ]
+    kept, counts = deduplicate(records)
+    assert len(kept) == 1
+    assert counts["removed_fuzzy"] == 1

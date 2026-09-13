@@ -58,11 +58,17 @@ def deduplicate(
         elif pmid is not None and pmid in by_pmid:
             index, rule = by_pmid[pmid], "pmid"
             counts["removed_pmid"] += 1
-        elif doi is None and pmid is None:
+        else:
             norm_title = normalise_title(record.title)
             surname = _first_author_surname(record)
             for position, existing in enumerate(survivors):
                 if existing["year"] != record.year or existing["surname"] != surname:
+                    continue
+                # Two records that both carry an identifier, and disagree on it,
+                # are different papers however similar their titles.
+                if doi is not None and existing["doi"] is not None and doi != existing["doi"]:
+                    continue
+                if pmid is not None and existing["pmid"] is not None and pmid != existing["pmid"]:
                     continue
                 if fuzz.ratio(existing["norm_title"], norm_title) >= fuzzy_threshold:
                     index, rule = position, "fuzzy_title"
@@ -82,6 +88,8 @@ def deduplicate(
             "norm_title": normalise_title(record.title),
             "surname": _first_author_surname(record),
             "year": record.year,
+            "doi": doi,
+            "pmid": pmid,
         })
         position = len(survivors) - 1
         if doi is not None:
