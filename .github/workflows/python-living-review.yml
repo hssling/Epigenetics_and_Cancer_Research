@@ -1,9 +1,10 @@
-name: Living Review Pipeline (Python 2025)
+name: Living Review Pipeline (Python 2025) [DEPRECATED]
 
+# DEPRECATED: see /DEPRECATED.md.
+# The weekly schedule was removed — it regenerated fabricated outputs.
+# Retained for historical reference; manual dispatch only.
 on:
-  schedule:
-    - cron: '0 0 * * 1' # Weekly on Monday
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch:
 
 permissions:
   contents: write
