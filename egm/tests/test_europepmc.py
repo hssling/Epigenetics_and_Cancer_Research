@@ -38,13 +38,15 @@ def _page(results, hit_count, next_cursor):
 
 
 def _final_page(results, hit_count):
-    """A page that ends the result set.
+    """A page that ends the result set by omitting nextCursorMark.
 
-    Europe PMC signals exhaustion by echoing back the cursorMark it was sent.
-    The client opens with "*", so echoing "*" is what a one-page result set
-    really looks like on the wire.
+    Observed live on 2026-09-14: at pageSize=1000 the whole 890-record set came
+    back on one page and the response body carried no nextCursorMark key at all.
+    That is what these single-page fixtures reproduce. The other exhaustion
+    signal -- a paged set whose final page echoes the cursorMark it was sent --
+    is covered by test_pagination_stops_when_cursor_repeats.
     """
-    return _page(results, hit_count, "*")
+    return {"hitCount": hit_count, "resultList": {"result": results}}
 
 
 def _patch_pages(mocker, pages, cap=REQUEST_CAP):
@@ -286,12 +288,40 @@ def test_missing_resultlist_raises(mocker):
     assert "resultList" in str(exc.value)
 
 
-def test_missing_next_cursor_raises(mocker):
-    pages = [{"hitCount": 1, "resultList": {"result": [_result()]}}]
+def test_absent_next_cursor_ends_a_complete_result_set(mocker):
+    """Live at pageSize=1000 the whole set arrives on one page and the body
+    carries no nextCursorMark. That is exhaustion, and one request suffices."""
+    pages = [{"hitCount": 2, "resultList": {"result": [
+        _result(id="A1"), _result(id="A2")]}}]
+    sent = _patch_pages(mocker, pages)
+    records = europepmc.search_records("q", query_hash_value=QH, page_size=1000)
+    assert len(sent) == 1
+    assert [r.source_id for r in records] == ["PPR:A1", "PPR:A2"]
+
+
+def test_absent_next_cursor_with_records_outstanding_raises(mocker):
+    """An omitted nextCursorMark must not be an escape hatch: if records are
+    still outstanding there is no way to continue, so the corpus would be
+    silently truncated."""
+    pages = [{"hitCount": 890, "resultList": {"result": [_result(id="A1")]}}]
+    _patch_pages(mocker, pages)
+    with pytest.raises(europepmc.EuropePMCError) as exc:
+        europepmc.search_records("q", query_hash_value=QH, page_size=1000)
+    assert "1 of 890" in str(exc.value)
+    assert "truncated" in str(exc.value)
+
+
+def test_repeated_cursor_with_records_outstanding_raises(mocker):
+    """The other exhaustion signal gets the same cross-check."""
+    pages = [
+        _page([_result(id="A1")], 890, "CURSOR_B"),
+        _page([_result(id="B1")], 890, "CURSOR_B"),
+    ]
     _patch_pages(mocker, pages)
     with pytest.raises(europepmc.EuropePMCError) as exc:
         europepmc.search_records("q", query_hash_value=QH, page_size=1)
-    assert "nextCursorMark" in str(exc.value)
+    assert "2 of 890" in str(exc.value)
+    assert "truncated" in str(exc.value)
 
 
 def test_search_requests_core_result_type(mocker):

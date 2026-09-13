@@ -216,10 +216,12 @@ def search_records(
 ) -> list[SearchRecord]:
     """Retrieve every record matching `query`, paginating with cursorMark.
 
-    Termination, and its trap: Europe PMC signals the end of a result set by
-    returning the SAME cursorMark it was given. A naive `while next_cursor:`
+    Termination, and its trap: on a paged result set Europe PMC signals the end
+    by returning the SAME cursorMark it was given. A naive `while next_cursor:`
     loop therefore never terminates -- it re-requests the final page forever.
-    The loop below stops when the returned cursor equals the one sent.
+    When the whole set fits in one page it instead omits nextCursorMark
+    altogether. Both are honoured below, and both are cross-checked against
+    hitCount so that "no more pages" can never mean "corpus truncated".
 
     `resultType=core` is required: `lite` omits abstractText, which would
     yield a corpus screenable on titles alone.
@@ -252,11 +254,6 @@ def search_records(
         page = result_list["result"]
 
         next_cursor = body.get("nextCursorMark")
-        if not next_cursor:
-            raise EuropePMCError(
-                f"Europe PMC response missing 'nextCursorMark' at cursorMark "
-                f"{cursor!r}; pagination cannot be verified as complete"
-            )
 
         if not page and len(records) < hit_count:
             raise EuropePMCError(
@@ -276,7 +273,23 @@ def search_records(
                 "not the corpus that was counted"
             )
 
-        if next_cursor == cursor:
+        # Europe PMC signals exhaustion in two ways, both observed live on
+        # 2026-09-14 against this query:
+        #   - pageSize=1000 (whole set on one page): nextCursorMark is OMITTED
+        #     from the response body entirely;
+        #   - pageSize=25 (paged): the final page echoes back the cursorMark it
+        #     was sent.
+        # Neither is treated as a bare stop signal. Exhaustion is only
+        # believable if every counted record actually arrived; short of that,
+        # accepting it would return a silently truncated corpus.
+        if not next_cursor or next_cursor == cursor:
+            if len(records) < hit_count:
+                raise EuropePMCError(
+                    f"Europe PMC signalled exhaustion at cursorMark {cursor!r} "
+                    f"(nextCursorMark={next_cursor!r}) with only {len(records)} "
+                    f"of {hit_count} records retrieved; the corpus would be "
+                    "silently truncated"
+                )
             return records
 
         cursor = next_cursor
