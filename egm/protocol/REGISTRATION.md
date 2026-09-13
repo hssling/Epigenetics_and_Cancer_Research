@@ -1,20 +1,27 @@
 # Registration status
 
-**Status: REGISTERED — pending approval.**
+**Status: REGISTERED, APPROVED AND PUBLIC.**
 
 | Field | Value |
 |---|---|
 | Registry | OSF Registries |
 | **Registration ID** | **3xtf2** |
 | **URL** | **https://osf.io/3xtf2** |
+| **DOI** | **10.17605/OSF.IO/3XTF2** |
+| Associated project | https://osf.io/zye2p |
 | Template | Generalized Systematic Review Registration |
 | Submitted | 2026-09-13 22:50:20 |
-| Visibility | Public immediately (no embargo) |
-| Approval | Pending — awaiting contributor approval / 48-hour window |
+| Approved | 2026-09-13 |
+| Visibility | Public, no embargo |
+| Licence | CC-BY 4.0 |
 | Protocol version registered | v1.0 (`protocol.md`) |
 
-Cite as: Siddalingaiah H S. *Epigenetic Approaches in Health and Public Health
-Practice: An Evidence Gap Map Protocol.* OSF Registries, 2026. https://osf.io/3xtf2
+**Cite as:** Siddalingaiah, H.S. (2026, September 13). *Epigenetic Approaches in
+Health and Public Health Practice: An Evidence Gap Map Protocol.* OSF Registries.
+https://doi.org/10.17605/OSF.IO/3XTF2
+
+Report this DOI in the PRISMA checklist (item 24a, registration and protocol) and
+in the Methods of the final manuscript.
 
 ## Template choice
 
@@ -66,7 +73,13 @@ recorded for this work.
 ## Gate
 
 Corpus retrieval may proceed before registration — retrieval is not screening.
-**Plan B (screening) may begin once the registration is APPROVED (currently pending).**
+**GATE OPEN.** The registration is approved and public, so the registration
+precondition for screening is satisfied.
+
+One precondition remains, and it is independent of registration: all 9,088
+records currently hold a null abstract. The registration itself commits to
+completing the efetch abstract backfill before screening begins. Screening must
+not start until that is done.
 This file is the gate.
 
 ## Investigator declarations (supplied 2026-09-13)
