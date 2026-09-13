@@ -37,7 +37,7 @@ def test_clean_column_passes():
 
 def test_saturated_column_is_flagged_with_value_and_share():
     df = pd.DataFrame({"effect": [0.3] * 7 + [0.1, 0.2, 0.4]})
-    found = find_placeholder_saturation(df, threshold=0.20)
+    found = find_placeholder_saturation(df, threshold=0.20, min_unique=4)
     assert "effect" in found
     value, share = found["effect"]
     assert value == 0.3
@@ -47,7 +47,7 @@ def test_saturated_column_is_flagged_with_value_and_share():
 def test_assert_raises_on_saturation():
     df = pd.DataFrame({"effect": [0.3] * 7 + [0.1, 0.2, 0.4]})
     with pytest.raises(IntegrityError, match="effect"):
-        assert_no_placeholder_saturation(df)
+        assert_no_placeholder_saturation(df, min_unique=4)
 
 
 def test_detector_catches_the_actual_fabricated_dataset():
@@ -74,19 +74,130 @@ def test_detector_catches_the_actual_fabricated_dataset():
 
 
 def test_no_rng_imported_in_data_path():
-    """Spec section 8.3 rule 3. Only sampling.py may import random."""
+    """Spec section 8.3 rule 3. Only sampling.py may import random.
+
+    Checks all AST forms: direct imports, attribute access (np.random),
+    and dynamic imports via __import__ or importlib.
+    """
     offenders: list[str] = []
     for path in PIPELINE.rglob("*.py"):
         if path.name in RNG_ALLOWED:
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
+            # Form 1: ast.Import - catches "import random", "import numpy.random", "import random.seed"
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    root = alias.name.split(".")[0]
-                    if root == "random" or alias.name.startswith("numpy.random"):
+                    if (alias.name == "random" or
+                        alias.name.startswith("random.") or
+                        alias.name == "numpy.random" or
+                        alias.name.startswith("numpy.random.")):
                         offenders.append(f"{path.name}: import {alias.name}")
+
+            # Form 2: ast.ImportFrom - catches "from random import X", "from numpy import random", etc.
             elif isinstance(node, ast.ImportFrom) and node.module:
-                if node.module.split(".")[0] == "random" or "numpy.random" in node.module:
+                if (node.module == "random" or
+                    node.module.startswith("random.") or
+                    node.module == "numpy.random" or
+                    node.module.startswith("numpy.random.")):
                     offenders.append(f"{path.name}: from {node.module} import ...")
+                # Special case: "from numpy import random"
+                elif node.module == "numpy":
+                    for alias in node.names:
+                        if alias.name == "random":
+                            offenders.append(f"{path.name}: from numpy import random")
+
+            # Form 3: ast.Attribute - catches "np.random", "numpy.random", "self.random" (conservative)
+            elif isinstance(node, ast.Attribute):
+                if node.attr == "random":
+                    offenders.append(f"{path.name}: attribute access .random")
+
+            # Form 4: ast.Call to __import__ or importlib.import_module with "random" string
+            elif isinstance(node, ast.Call):
+                func_name = None
+                if isinstance(node.func, ast.Name):
+                    func_name = node.func.id
+                elif isinstance(node.func, ast.Attribute):
+                    func_name = node.func.attr
+
+                if func_name in ("__import__", "import_module"):
+                    # Check first argument for string constant containing "random"
+                    if node.args and isinstance(node.args[0], ast.Constant):
+                        if isinstance(node.args[0].value, str) and "random" in node.args[0].value:
+                            offenders.append(f"{path.name}: {func_name}(...) with 'random'")
+
     assert offenders == [], f"RNG must not appear in the data path: {offenders}"
+
+
+def test_rng_detection_catches_import_random():
+    """Form 1: ast.Import catches 'import random'."""
+    code = "import random\nrandom.random()"
+    tree = ast.parse(code)
+    found = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "random":
+                    found = True
+    assert found, "Should detect direct import random"
+
+
+def test_rng_detection_catches_import_numpy_as_np_then_np_random():
+    """Form 3: ast.Attribute catches 'np.random' after 'import numpy as np'."""
+    code = "import numpy as np\nnp.random.rand()"
+    tree = ast.parse(code)
+    found = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute) and node.attr == "random":
+            found = True
+    assert found, "Should detect np.random attribute access"
+
+
+def test_rng_detection_catches_from_numpy_import_random():
+    """Form 2: ast.ImportFrom catches 'from numpy import random'."""
+    code = "from numpy import random\nrandom.rand()"
+    tree = ast.parse(code)
+    found = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "numpy":
+            for alias in node.names:
+                if alias.name == "random":
+                    found = True
+    assert found, "Should detect from numpy import random"
+
+
+def test_rng_detection_catches_dunder_import_random():
+    """Form 4: ast.Call catches '__import__(\"random\")'."""
+    code = "round(__import__('random').random(), 2)"
+    tree = ast.parse(code)
+    found = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id == "__import__":
+                if node.args and isinstance(node.args[0], ast.Constant):
+                    if isinstance(node.args[0].value, str) and "random" in node.args[0].value:
+                        found = True
+    assert found, "Should detect __import__('random')"
+
+
+def test_low_cardinality_boolean_column_not_flagged():
+    """Balanced 0/1 boolean column should not be flagged even at 50%+ modal."""
+    df = pd.DataFrame({"flag": [0, 0, 1, 1, 1, 1]})  # modal share 66%, but only 2 distinct values
+    found = find_placeholder_saturation(df, threshold=0.20, min_unique=10)
+    assert "flag" not in found, "Boolean column should be skipped with min_unique=10"
+
+
+def test_low_cardinality_categorical_column_not_flagged():
+    """Small categorical (4 values) should not be flagged."""
+    df = pd.DataFrame({"category": [1, 1, 1, 1, 2, 2, 3, 4]})  # modal share 50%, only 4 distinct
+    found = find_placeholder_saturation(df, threshold=0.20, min_unique=10)
+    assert "category" not in found, "Low-cardinality categorical should be skipped"
+
+
+def test_high_cardinality_with_dominant_modal_is_flagged():
+    """Column with >=10 distinct values but dominant modal should still be flagged."""
+    values = [0.3] * 70 + list(range(1, 31))  # 0.3 at 70%, plus 30 other distinct values = 31 total distinct
+    df = pd.DataFrame({"measurement": values})
+    found = find_placeholder_saturation(df, threshold=0.20, min_unique=10)
+    assert "measurement" in found, "High-cardinality column with dominant mode should be flagged"
+    assert found["measurement"][0] == 0.3
