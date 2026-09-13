@@ -191,6 +191,14 @@ def validate_recall(
             "partial sample — the registered denominator is the full drawn sample"
         )
 
+    missing_ai = expected_record_ids - set(ai)
+    if missing_ai:
+        raise ValueError(
+            f"{len(missing_ai)} of {len(expected_record_ids)} drawn records have no AI "
+            f"decision (e.g. {sorted(missing_ai)[:5]}); recall cannot be estimated "
+            "against a truncated screening log"
+        )
+
     shared = sorted(set(human) & set(ai))
     if not shared:
         raise ValueError("no records appear in both decision logs")

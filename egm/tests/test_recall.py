@@ -230,6 +230,20 @@ def test_full_human_screening_of_the_drawn_sample_succeeds(tmp_path):
     assert report.n_validated == 20
 
 
+def test_truncated_ai_log_raises(tmp_path):
+    """Same failure as a partial human sample, on the other log."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    expected = {f"egm-{n}" for n in range(20)}
+    for n in range(20):
+        _decision(human_p, f"egm-{n}", "exclude", "human", criterion="not_primary")
+    for n in range(5):          # AI log truncated
+        _decision(ai_p, f"egm-{n}", "exclude", "ai", confidence=0.9,
+                  criterion="not_primary")
+
+    with pytest.raises(ValueError, match="no AI decision"):
+        validate_recall(human_p, ai_p, expected, {"high": 100})
+
+
 # --- Fix 3: a stratum must never silently vanish or be assumed perfect -----
 
 

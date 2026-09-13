@@ -98,6 +98,7 @@ Roughly 5-8 hours. This is the step that produces the published recall figure.
     python -m pipeline.report_recall \
       --human screening/human_validation.jsonl \
       --ai screening/screening_decisions.jsonl \
+      --sample screening/validation_1000.json \
       --out screening/recall.json
 
 Report whatever it says. The registration commits to publishing a poor recall
