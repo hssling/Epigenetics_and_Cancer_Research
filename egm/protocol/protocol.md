@@ -12,7 +12,7 @@
 
 **Date:** 2026-09-13
 
-**Registration status:** NOT YET REGISTERED. See `REGISTRATION.md`. Screening must not begin until a registration ID is recorded there.
+**Registration status:** REGISTERED, APPROVED AND PUBLIC. OSF Registries **3xtf2** (https://osf.io/3xtf2), DOI **10.17605/OSF.IO/3XTF2**, approved 2026-09-13, no embargo, CC-BY 4.0. The version registered is v1.0 of this document. See `REGISTRATION.md` for the full record and `amendments.md` for every deviation enacted since.
 
 ---
 

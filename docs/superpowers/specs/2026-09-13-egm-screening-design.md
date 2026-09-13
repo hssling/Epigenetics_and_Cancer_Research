@@ -255,9 +255,19 @@ it is acted on.
 Stratification means the raw sample proportions are not the population
 proportions, so `recall.py` reports both the unweighted sample statistics and the
 stratum-weighted population estimate, and labels which is which. Reporting a
-stratified sample's raw rate as if it were the population rate would understate
-the false-negative rate precisely because low-confidence records were deliberately
-over-sampled.
+stratified sample's raw rate as if it were the population rate would **overstate**
+the false-negative rate, precisely because low-confidence records — the stratum
+where a missed study is most likely to be hiding — are deliberately over-sampled.
+The sample is therefore enriched for error relative to the population, and its
+raw rate is biased upward.
+
+That direction matters and is easy to get wrong: an earlier draft of this
+section asserted the opposite. The implemented weighting was checked against
+it — on the same validation inputs, the raw basis implies 336.0–588.5 eligible
+studies missed across the exclusion set, while the stratum-weighted estimate
+implies 37.6–127.3. The raw figure is the conservative one, not the optimistic
+one. Reporting only the weighted estimate would be the error to guard against;
+reporting only the raw one would be alarmist. `recall.py` reports both.
 
 **If false negatives are found**, the observed rate and its exact interval are
 reported as they stand, and the sample is extended in blocks of 500. The
@@ -335,4 +345,4 @@ the environment; it is never written to the repository, and no artefact records 
 | State the reproducibility limit explicitly | Letting "reproducible" stand unqualified | LLM sampling is non-deterministic and temperature is removed on current models; the claim cannot hold as stated, and a reviewer finding that is worse than saying it first |
 | API failure raises | Recording a failed record as excluded | A failure silently converted into an exclusion corrupts both the PRISMA count and the recall estimate, and is undetectable afterwards |
 | Fresh sample when criteria change; reuse when only prompt wording changes | Reusing the same 300 in all cases | After the investigator has seen the disagreements a re-screen is no longer blind, and decisions made under superseded criteria cannot measure agreement with the current ones |
-| Report both unweighted and stratum-weighted recall | Reporting the raw sample rate | Low-confidence exclusions are deliberately over-sampled, so the raw rate is not the population rate and presenting it as such would understate the false-negative rate |
+| Report both unweighted and stratum-weighted recall | Reporting only one of them | Low-confidence exclusions are deliberately over-sampled, so the raw rate is not the population rate: presenting it alone **overstates** the false-negative rate (336.0-588.5 implied missed vs 37.6-127.3 weighted, on the same inputs), while presenting the weighted estimate alone hides the conservative bound |
