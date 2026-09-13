@@ -130,3 +130,60 @@ def test_missing_idlist_raises_pubmed_error(mocker):
     with pytest.raises(pubmed.PubMedError) as exc:
         pubmed.search("q", retmax=10)
     assert "idlist" in str(exc.value)
+
+
+def test_missing_result_key_raises_instead_of_vanishing(mocker):
+    """A malformed/error esummary body with no 'result' key must not silently
+    yield zero records for the whole batch (demonstrated: 3 requested, 0 returned,
+    no error, before this fix).
+
+    Asserts on wording distinctive to the 'result' key check itself (batch size
+    and 'result'), not just "an error was raised" -- the per-pmid omission
+    check (a separate fix) would also fire in this scenario since every pmid
+    in the batch is technically "missing" once result defaults to {}, so a
+    looser assertion would pass even with this specific check removed.
+    """
+    mocker.patch.object(
+        pubmed.requests, "get",
+        return_value=_FakeResponse({"header": {"type": "esummary"}}),
+    )
+    mocker.patch.object(pubmed.time, "sleep")
+    with pytest.raises(pubmed.PubMedError) as exc:
+        pubmed.fetch_summaries(["1", "2", "3"], query_hash_value="h" * 12)
+    message = str(exc.value)
+    assert "'result'" in message
+    assert "batch of 3" in message
+    assert "first='1'" in message and "last='3'" in message
+
+
+def test_omitted_pmid_raises_instead_of_silently_dropping(mocker):
+    """A uid NCBI omits from the result body must not silently disappear
+    (demonstrated: 2 requested, 1 returned, no error, before this fix)."""
+    payload = {"result": {
+        "uids": ["111"],
+        "111": {"uid": "111", "title": "A methylation study", "fulljournalname": "J",
+                "pubdate": "2020", "authors": [], "articleids": []},
+    }}
+    mocker.patch.object(pubmed.requests, "get", return_value=_FakeResponse(payload))
+    mocker.patch.object(pubmed.time, "sleep")
+    with pytest.raises(pubmed.PubMedError) as exc:
+        pubmed.fetch_summaries(["111", "222"], query_hash_value="h" * 12)
+    assert "222" in str(exc.value)
+
+
+def test_empty_title_raises_instead_of_defaulting(mocker):
+    """title is a required, non-Optional field; it must never default to ''.
+
+    An empty default lets two distinct untitled records collide under fuzzy
+    matching, since rapidfuzz.fuzz.ratio('', '') == 100.0.
+    """
+    payload = {"result": {
+        "uids": ["444"],
+        "444": {"uid": "444", "title": "   ", "fulljournalname": "J",
+                "pubdate": "2020", "authors": [], "articleids": []},
+    }}
+    mocker.patch.object(pubmed.requests, "get", return_value=_FakeResponse(payload))
+    mocker.patch.object(pubmed.time, "sleep")
+    with pytest.raises(pubmed.PubMedError) as exc:
+        pubmed.fetch_summaries(["444"], query_hash_value="h" * 12)
+    assert "444" in str(exc.value)

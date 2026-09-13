@@ -87,13 +87,27 @@ def fetch_summaries(
     for start in range(0, len(pmids), batch_size):
         batch = pmids[start : start + batch_size]
         body = _get("esummary.fcgi", {"db": "pubmed", "id": ",".join(batch)})
-        result = body.get("result", {})
+        if "result" not in body:
+            raise PubMedError(
+                f"esummary response missing 'result' key for a batch of {len(batch)} "
+                f"pmid(s) (first={batch[0]!r}, last={batch[-1]!r}); the batch would "
+                "otherwise vanish from the corpus with no error"
+            )
+        result = body["result"]
         retrieved_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+        missing: list[str] = []
         for pmid in batch:
             article = result.get(pmid)
             if article is None:
+                missing.append(pmid)
                 continue
+            title = (article.get("title") or "").strip()
+            if not title:
+                raise PubMedError(
+                    f"esummary record for pmid {pmid!r} has no title; title is a "
+                    "required field and must never be defaulted to an empty string"
+                )
             journal = (article.get("fulljournalname") or "").strip()
             records.append(
                 SearchRecord(
@@ -101,7 +115,7 @@ def fetch_summaries(
                     source_id=pmid,
                     doi=_extract_doi(article),
                     pmid=pmid,
-                    title=(article.get("title") or "").strip(),
+                    title=title,
                     abstract=None,  # esummary does not carry abstracts
                     year=_parse_year(article.get("pubdate", "")),
                     journal=journal or None,
@@ -109,6 +123,13 @@ def fetch_summaries(
                     retrieved_at=retrieved_at,
                     query_hash=query_hash_value,
                 )
+            )
+        if missing:
+            shown = missing[:20]
+            more = f" (+{len(missing) - 20} more)" if len(missing) > 20 else ""
+            raise PubMedError(
+                f"esummary omitted {len(missing)} pmid(s) requested in this batch: "
+                f"{', '.join(shown)}{more}"
             )
         time.sleep(NCBI_RATE_LIMIT_SECONDS)
     return records
