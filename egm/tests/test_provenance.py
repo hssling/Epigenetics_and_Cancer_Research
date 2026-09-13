@@ -21,6 +21,33 @@ def test_manifest_records_the_hash_of_its_query():
     assert m.run_at.endswith("Z")
 
 
+def test_run_at_is_genuinely_utc_not_local_time_mislabelled():
+    """Would fail if run_at used local time with a hardcoded 'Z' suffix.
+
+    Parses run_at back as UTC and compares it to a UTC instant captured
+    around the call. On any machine whose local time differs from UTC,
+    a mislabelled local timestamp lands far outside this window.
+    """
+    from datetime import datetime, timezone
+
+    before = datetime.now(timezone.utc)
+    manifest = RunManifest.create(
+        query_string="q", source_db="pubmed", record_count=0, notes=None
+    )
+    after = datetime.now(timezone.utc)
+
+    parsed = datetime.strptime(manifest.run_at, "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=timezone.utc
+    )
+
+    # One second of slack each side absorbs the format's whole-second truncation.
+    assert before.replace(microsecond=0) <= parsed <= after, (
+        f"run_at {manifest.run_at} is not within the UTC window "
+        f"[{before.isoformat()}, {after.isoformat()}] — likely local time "
+        f"mislabelled as UTC"
+    )
+
+
 def test_manifest_rejects_negative_count():
     with pytest.raises(ValidationError):
         RunManifest.create(query_string="q", source_db="pubmed", record_count=-1, notes=None)
