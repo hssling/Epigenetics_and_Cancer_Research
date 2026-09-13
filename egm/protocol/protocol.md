@@ -6,7 +6,7 @@
 
 **Investigator:** Dr. Siddalingaiah H S, Professor of Community Medicine, Shridevi Institute of Medical Sciences and Research Hospital, Tumkur. Sole investigator.
 
-**Contact:** siddalingaiah.hs@shridevimedical.org
+**Contact:** hssling@yahoo.com
 
 **Protocol version:** 1.0
 

@@ -54,15 +54,20 @@ Corpus retrieval may proceed before registration — retrieval is not screening.
 **Plan B (screening) must not start until the Registration ID above is filled in.**
 This file is the gate.
 
-## Before submitting
+## Investigator declarations (supplied 2026-09-13)
 
-Fields the protocol cannot supply, which the investigator must answer personally
-(these must not be invented — see `DEPRECATED.md` for why this project takes that
-seriously):
+| Field | Value |
+|---|---|
+| Funding | **None** — this work is unfunded |
+| Conflicts of interest | **None declared** |
+| Review start date | **2026-09-13** (date the search was executed; verifiable from the corpus run manifest) |
+| Anticipated completion | **2027-06-30** (estimate; amend if it slips) |
+| Contact to publish | **hssling@yahoo.com** |
 
-- **Funding source** — state explicitly, including "none" if unfunded
-- **Conflicts of interest** — declare, including "none"
-- **Anticipated start and completion dates** — the investigator's own estimate
-- **Named guarantor / contact** — confirm the institutional email is the one to publish
-- **Review team** — sole investigator; AI assistance is disclosed in the protocol
-  Methods, and AI is not an author (spec §9.3)
+Paste-ready submission content: `OSF_SUBMISSION.md`.
+
+## Stage at registration
+
+Search executed and corpus assembled; **screening not yet begun**. No eligibility
+assessment, extraction, coding or analysis has been performed. Retrieval is not
+extraction, so no registry stage bar is crossed.
