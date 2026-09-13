@@ -1,5 +1,6 @@
 """The human screening app. Durability and blindness are the properties."""
 import json
+import time
 
 import pytest
 
@@ -106,23 +107,63 @@ def test_record_decision_rejects_an_exclusion_without_a_criterion(tmp_path):
         screen_app.record_decision(out, record, "exclude", None, "calibration")
 
 
-def test_stale_submission_is_refused_and_writes_nothing(tmp_path):
-    """A double keypress must not record a decision against the next record."""
-    sample, out = _sample(tmp_path, 3), tmp_path / "out.jsonl"
-    records = json.loads(sample.read_text(encoding="utf-8"))
+def test_stale_submission_over_http_is_refused_and_writes_nothing(tmp_path):
+    """Drives the real /decide handler, because that is where the bug was.
 
-    # Simulate the queue having advanced past egm-0 already.
-    screen_app.record_decision(out, records[0], "include", None, "calibration")
-    before = out.read_text(encoding="utf-8")
+    The previous version of this test called record_decision directly and
+    passed against the pre-fix code, so it guarded nothing. A double keypress
+    or key-repeat sends a second request for a record the queue has already
+    advanced past; it must not be applied to the next record.
+    """
+    import threading
+    import urllib.error
+    import urllib.request
 
-    queue = screen_app.load_queue(sample, out)
-    assert queue[0]["record_id"] == "egm-1"
+    sample = _sample(tmp_path, 3)
+    out = tmp_path / "out.jsonl"
 
-    # A resent decision naming the already-screened record must not be applied
-    # to egm-1. record_decision itself is identity-explicit, so assert the
-    # guard's contract: the id the page submitted must equal the queue head.
-    assert queue[0]["record_id"] != records[0]["record_id"]
-    assert out.read_text(encoding="utf-8") == before
+    thread = threading.Thread(
+        target=screen_app.serve,
+        args=(sample, out, "calibration", 8791),
+        daemon=True,
+    )
+    thread.start()
+
+    def get(path):
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:8791{path}", timeout=5) as r:
+                return r.status, r.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read().decode("utf-8")
+
+    # Wait for the server to bind.
+    for _ in range(50):
+        try:
+            get("/")
+            break
+        except Exception:
+            time.sleep(0.1)
+
+    # First decision for egm-0 is applied.
+    status, _ = get("/decide?record_id=egm-0&decision=include&criterion=")
+    assert status in (200, 303)
+    assert len(read_decisions(out)) == 1
+
+    after_first = out.read_text(encoding="utf-8")
+
+    # The SAME request resent — a double keypress. The queue head is now egm-1.
+    status, body = get("/decide?record_id=egm-0&decision=include&criterion=")
+    assert status == 409, f"stale submission was accepted with status {status}"
+    assert "Stale submission ignored" in body
+    assert out.read_text(encoding="utf-8") == after_first, (
+        "a stale submission wrote to the decision log"
+    )
+
+    decisions = read_decisions(out)
+    assert len(decisions) == 1
+    assert decisions[0].record_id == "egm-0", (
+        "the stale decision was misattributed to the next record"
+    )
 
 
 def test_an_ai_decision_in_the_log_does_not_remove_a_record_from_the_human_queue(tmp_path):
