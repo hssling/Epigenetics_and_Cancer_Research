@@ -129,11 +129,11 @@ Active work lives in `egm/`. See
 
 | Reported value | Actual origin |
 |---|---|
-| "Mean positive detection 48.9%" | Mean of `random.random()` (`scripts/fetch_pubmed_data.py:293`) |
+| "Mean positive detection 48.9%" | Mean of `random.random()` (`scripts/fetch_pubmed_data.py:268`) |
 | "SEPT9 mean positivity 66.0%" (n=1) | A single `random.random()` draw |
-| `sensitivity`, `specificity` columns | `random.uniform(0.5, 0.95)` (`scripts/fetch_pubmed_data.py:295-296`) |
-| Exposure effect sizes and ranking | 424 of 616 (69%) are the constant `0.3` (`scripts/prepare_master_dataset.py:88`) |
-| "Median sample size 200" | 468 of 616 (76%) are the constant `200` (`scripts/prepare_master_dataset.py:92`) |
+| `sensitivity`, `specificity` columns | `random.uniform(0.5, 0.95)` (`scripts/fetch_pubmed_data.py:270-271`) |
+| Exposure effect sizes and ranking | 424 of 616 (69%) are the constant `0.3` (`scripts/prepare_master_dataset.py:83`) |
+| "Median sample size 200" | 468 of 616 (76%) are the constant `200` (`scripts/prepare_master_dataset.py:88`) |
 | 95% confidence intervals | Computed as `effect x 0.8` to `effect x 1.2` — arithmetic, no variance input |
 
 `data/prisma_counts.csv` records 616 identified, **0 excluded**, 616 included.
