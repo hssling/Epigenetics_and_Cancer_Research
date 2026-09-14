@@ -202,6 +202,41 @@ def _check_not_already_collected(
         )
 
 
+def _collection_state(batch: dict, log_path: pathlib.Path) -> str:
+    """Whether a batch is absent from the log, fully in it, or partly in it.
+
+    The three-way distinction is what makes a run resumable without weakening
+    the double-counting guard. A long screening run gets interrupted -- a rate
+    limit, a crash, a stopped session -- and the operator re-runs collection.
+    Raising on a batch that is already complete would make resumption
+    impossible and invite someone to delete the log and start over, which is
+    far worse than the problem it was protecting against.
+
+    A PARTIAL overlap is different in kind and still raises. collect() appends
+    only after every check has passed, and append_decision fsyncs each line, so
+    a batch that is half in the log means something tore mid-append. Those
+    records cannot simply be topped up: the ones already there may belong to a
+    different decisions file than the one now on disk.
+    """
+    expected = {r["record_id"] for r in batch["records"]}
+    already = {
+        d.record_id
+        for d in read_decisions(log_path)
+        if d.record_id in expected and d.stage == batch["stage"]
+    }
+    if not already:
+        return "absent"
+    if already == expected:
+        return "complete"
+    raise CollectionError(
+        f"batch {batch['batch_id']} is PARTIALLY collected: {len(already)} of "
+        f"{len(expected)} records already have a {batch['stage']!r} decision "
+        f"({_shown(already)}). collect() writes only after all checks pass, so a "
+        "partial batch means an append was interrupted; the log and this "
+        "decisions file may disagree. Resolve by hand rather than topping up."
+    )
+
+
 def collect(
     batch_path: pathlib.Path,
     decisions_path: pathlib.Path,
@@ -246,6 +281,7 @@ def collect_all(
 
     totals = {"batches": 0, "collected": 0, "include": 0, "exclude": 0, "unclear": 0}
     pending: list[str] = []
+    already_collected: list[str] = []
 
     for batch_path in sorted(batch_dir.glob(BATCH_GLOB)):
         stem = batch_path.stem
@@ -253,12 +289,16 @@ def collect_all(
         if not decisions_path.exists():
             pending.append(stem)
             continue
+        batch = _load_batch(batch_path)
+        if _collection_state(batch, log_path) == "complete":
+            already_collected.append(stem)
+            continue
         counts = collect(batch_path, decisions_path, log_path, model_id)
         totals["batches"] += 1
         for key in ("collected", "include", "exclude", "unclear"):
             totals[key] += counts[key]
 
-    return {**totals, "pending": pending}
+    return {**totals, "pending": pending, "already_collected": already_collected}
 
 
 def main() -> None:

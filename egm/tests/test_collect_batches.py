@@ -428,3 +428,65 @@ def test_cli_propagates_a_collection_error(tmp_path, monkeypatch):
     ])
     with pytest.raises(collect_batches.CollectionError):
         collect_batches.main()
+
+
+# --- resumption: a long run gets interrupted, and must be restartable --------
+
+
+def test_collect_all_resumes_after_an_interrupted_run(tmp_path):
+    """The real case: a rate limit killed the run partway through.
+
+    Before this, collect_all called collect() on every batch with a decisions
+    file, and collect()'s double-counting guard raised on the first already
+    collected batch -- so a partial run could not be resumed at all, which
+    invites deleting the log and starting over.
+    """
+    for number in (1, 2):
+        _pair(tmp_path, number, n=4)
+    log = tmp_path / "log.jsonl"
+
+    first = collect_batches.collect_all(tmp_path, log, MODEL)
+    assert first["batches"] == 2 and first["collected"] == 8
+
+    second = collect_batches.collect_all(tmp_path, log, MODEL)
+
+    assert second["batches"] == 0, "an already-collected batch was collected twice"
+    assert second["collected"] == 0
+    assert sorted(second["already_collected"]) == ["batch_0001", "batch_0002"]
+    assert len(read_decisions(log)) == 8, "the log grew on a no-op re-run"
+
+
+def test_collect_all_collects_only_the_batches_that_are_new(tmp_path):
+    """Exactly the state after an interruption: some done, some not."""
+    b1, d1 = _pair(tmp_path, 1, n=4)
+    _pair(tmp_path, 2, n=4)
+    log = tmp_path / "log.jsonl"
+    collect_batches.collect(b1, d1, log, MODEL)
+
+    result = collect_batches.collect_all(tmp_path, log, MODEL)
+
+    assert result["batches"] == 1
+    assert result["collected"] == 4
+    assert result["already_collected"] == ["batch_0001"]
+    assert len(read_decisions(log)) == 8
+
+
+def test_a_partially_collected_batch_still_raises(tmp_path):
+    """Half a batch in the log means an append tore. That is NOT resumable.
+
+    This is the half of the guard that must survive the resumption fix: topping
+    up a partial batch could mix records from two different decisions files.
+    """
+    batch, _ = _pair(tmp_path, 1, n=4)
+    log = tmp_path / "log.jsonl"
+    records = json.loads(batch.read_text(encoding="utf-8"))["records"]
+
+    append_decision(log, ScreeningDecision(
+        record_id=records[0]["record_id"], pmid=records[0]["pmid"],
+        decision="include", criterion=None, confidence=0.9, reason="r",
+        screener="ai", model_id=MODEL, prompt_sha256=SHA, stage="screening",
+        decided_at="2026-09-14T00:00:00Z", supersedes=None,
+    ))
+
+    with pytest.raises(collect_batches.CollectionError, match="PARTIALLY collected"):
+        collect_batches.collect_all(tmp_path, log, MODEL)
