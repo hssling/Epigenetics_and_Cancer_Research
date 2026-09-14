@@ -122,3 +122,24 @@ def test_append_never_rewrites_earlier_lines(tmp_path):
 
 def test_read_decisions_on_missing_file_returns_empty(tmp_path):
     assert read_decisions(tmp_path / "absent.jsonl") == []
+
+
+def test_a_decision_for_a_record_without_a_pmid_round_trips(tmp_path):
+    """Europe PMC preprints and PMC-only deposits are not in MEDLINE and have
+    no PMID at all. If a decision could not be recorded for them, ~700 deduped
+    records would be unscreenable."""
+    path = tmp_path / "decisions.jsonl"
+    append_decision(path, ScreeningDecision(**_ai(record_id="egm-ppr-1", pmid=None)))
+
+    decisions = read_decisions(path)
+    assert len(decisions) == 1
+    assert decisions[0].pmid is None
+    assert decisions[0].record_id == "egm-ppr-1"
+
+
+def test_omitting_pmid_raises_rather_than_defaulting_to_none():
+    """Nullable, but still required: absence must be stated, not forgotten."""
+    kwargs = _ai()
+    del kwargs["pmid"]
+    with pytest.raises(ValidationError, match="pmid"):
+        ScreeningDecision(**kwargs)

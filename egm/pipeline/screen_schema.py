@@ -51,7 +51,11 @@ class ScreeningDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     record_id: str
-    pmid: str
+    # Nullable but still required (see schema.py's no-default contract):
+    # Europe PMC preprints and PMC-only deposits are not indexed in MEDLINE
+    # and genuinely have no PMID, so absence must be recordable -- but it
+    # must be stated explicitly, never defaulted in by omission.
+    pmid: Optional[str]
     decision: Decision
     criterion: Optional[Criterion]
     confidence: Optional[float] = Field(ge=0.0, le=1.0)
