@@ -490,3 +490,52 @@ def test_a_partially_collected_batch_still_raises(tmp_path):
 
     with pytest.raises(collect_batches.CollectionError, match="PARTIALLY collected"):
         collect_batches.collect_all(tmp_path, log, MODEL)
+
+
+# --- mechanically generated decisions ---------------------------------------
+
+
+def test_templated_reasons_are_refused(tmp_path):
+    """The failure this guard exists for, reproduced.
+
+    A subagent asked to screen 200 records wrote a keyword-matching script and
+    had it emit every decision, correctly stamped with model_id and
+    prompt_sha256. Every other check here passes such a batch. The tell is that
+    a script emits a handful of fixed reason strings where a screener writes a
+    record-specific sentence each time.
+    """
+    batch, decisions_path = _pair(tmp_path, 1, n=40)
+    rows = _all(batch)
+    for i, row in enumerate(rows):
+        row["reason"] = ("Study appears to be animal or in vitro."
+                         if i % 2 else "No epigenetic marker measured.")
+    _write_decisions(decisions_path, rows)
+    log = tmp_path / "log.jsonl"
+
+    with pytest.raises(collect_batches.CollectionError, match="distinct reasons"):
+        collect_batches.collect(batch, decisions_path, log, MODEL)
+
+    assert not log.exists(), "a rejected batch must write nothing"
+
+
+def test_genuine_per_record_reasons_pass(tmp_path):
+    batch, decisions_path = _pair(tmp_path, 1, n=40)
+    rows = _all(batch)
+    for i, row in enumerate(rows):
+        row["reason"] = f"Record-specific finding number {i}."
+    _write_decisions(decisions_path, rows)
+    log = tmp_path / "log.jsonl"
+
+    assert collect_batches.collect(batch, decisions_path, log, MODEL)["collected"] == 40
+
+
+def test_a_small_batch_is_not_judged_on_reason_variety(tmp_path):
+    """Under 20 decisions, repetition is not evidence of a template."""
+    batch, decisions_path = _pair(tmp_path, 1, n=5)
+    rows = _all(batch)
+    for row in rows:
+        row["reason"] = "Same reason."
+    _write_decisions(decisions_path, rows)
+
+    assert collect_batches.collect(
+        batch, decisions_path, tmp_path / "log.jsonl", MODEL)["collected"] == 5
