@@ -30,6 +30,21 @@ from pipeline.screen_schema import (
 )
 
 
+def _identifier(record: dict) -> str:
+    """Label the record by PMID, falling back to its source id.
+
+    Europe PMC preprints and PMC-only deposits are not indexed in MEDLINE and
+    carry no PMID at all (698 records in the current corpus). Rendering
+    `record["pmid"]` unguarded raised TypeError on the first such record, which
+    would have stopped human screening dead partway through a session.
+    """
+    pmid = record.get("pmid")
+    if pmid:
+        return f"PMID {pmid}"
+    source_id = record.get("source_id")
+    return str(source_id) if source_id else "no identifier"
+
+
 def load_queue(
     sample_path: pathlib.Path, out_path: pathlib.Path
 ) -> list[dict[str, Any]]:
@@ -113,7 +128,7 @@ def build_page(
 <div class="bar"><i></i></div>
 <h1>{html.escape(record["title"])}</h1>
 <div class="j">{html.escape(str(record.get("journal") or "-"))} &middot;
- {html.escape(str(record.get("year") or "-"))} &middot; PMID {html.escape(record["pmid"])}</div>
+ {html.escape(str(record.get("year") or "-"))} &middot; {html.escape(_identifier(record))}</div>
 <div class="a">{html.escape(abstract)}</div>
 <p><kbd>i</kbd> include &nbsp; <kbd>e</kbd> exclude &nbsp; <kbd>u</kbd> unclear</p>
 <div id="crit"><b>Exclusion criterion:</b><ul>{buttons}</ul></div>

@@ -180,3 +180,45 @@ def test_an_ai_decision_in_the_log_does_not_remove_a_record_from_the_human_queue
 
     queue = screen_app.load_queue(sample, out)
     assert [r["record_id"] for r in queue] == ["egm-0", "egm-1", "egm-2"]
+
+
+def test_page_renders_a_record_with_no_pmid(tmp_path):
+    """Europe PMC preprints carry no PMID; the page must still render.
+
+    698 of the 9,786 records in the combined corpus have pmid=None. Before this
+    guard, build_page raised TypeError on the first of them -- which would have
+    halted a human screening session partway through, after real work had
+    already been done.
+    """
+    record = {"record_id": "egm-000123", "pmid": None, "source_id": "PPR:PPR9999",
+              "title": "A Preprint Title", "abstract": "A Preprint Abstract",
+              "year": 2025, "journal": None}
+
+    html = screen_app.build_page(record, position=1, total=300, elapsed_s=0.0)
+
+    assert "A Preprint Title" in html
+    assert "PPR:PPR9999" in html, "the record must still be identifiable on screen"
+    assert "PMID" not in html, "a record with no PMID must not be labelled with one"
+
+
+def test_page_falls_back_to_a_stated_absence_when_there_is_no_identifier_at_all(tmp_path):
+    record = {"record_id": "egm-000124", "pmid": None, "title": "T",
+              "abstract": "A", "year": 2025, "journal": None}
+
+    html = screen_app.build_page(record, position=1, total=300, elapsed_s=0.0)
+
+    assert "no identifier" in html
+
+
+def test_a_human_decision_on_a_pmid_less_record_round_trips(tmp_path):
+    """The decision log must accept the absence, not just the page."""
+    out = tmp_path / "decisions.jsonl"
+    record = {"record_id": "egm-000123", "pmid": None, "source_id": "PPR:PPR9999",
+              "title": "T", "abstract": "A", "year": 2025, "journal": None}
+
+    screen_app.record_decision(out, record, "include", None, "calibration")
+
+    (entry,) = read_decisions(out)
+    assert entry.record_id == "egm-000123"
+    assert entry.pmid is None
+    assert entry.screener == "human"
