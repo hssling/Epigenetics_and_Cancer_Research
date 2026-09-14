@@ -3,53 +3,197 @@
 Every deviation from the registered protocol (OSF 3xtf2) is recorded here with
 its date and rationale. Nothing is changed silently.
 
-| Date | Section | Change | Rationale |
-|---|---|---|---|
-| — | — | No amendments enacted to date | — |
+Each amendment below was decided and enacted **before any eligibility result
+existed**, so none can have been shaped by seeing which way a result came out.
+That ordering is the point of this file, not a courtesy.
 
-## Pending amendment: database access
+| # | Date | Section | Change | Rationale |
+|---|---|---|---|---|
+| 1 | 2026-09-14 | 4.1 Information sources | Europe PMC substituted for Embase, restricted to `NOT SRC:MED`. Web of Science not substituted. | No institutional access to Embase or Web of Science. See Amendment 1. |
+| 2 | 2026-09-14 | 4.4 Deduplication | Publication-year match relaxed to ±2 years, and the DOI-conflict guard disapplied, **for preprint pairs only** | A preprint and its published version necessarily differ in year and always differ in DOI. The registered rule double-counted 136 studies. See Amendment 2. |
+| 3 | 2026-09-14 | 5 Screening, Stage 0 | Screening instrument refined `screening_v1.md` → `screening_v2.md` after calibration round 1 | Registered Stage 0 behaviour ("eligibility criteria and AI prompt refined"). Round 1 exposed an unreachable criterion and a missing one. See Amendment 3. |
 
-**Raised 2026-09-13. Not yet enacted — drafted here so it is not lost.**
+---
 
-The registration lists, under Databases, four bibliographic sources to be
-searched: PubMed/MEDLINE (executed), **Embase (Elsevier)**, **Web of Science
-Core Collection (Clarivate)**, and **Cochrane CENTRAL**.
+## Amendment 1 (enacted 2026-09-14): database substitution
 
-The investigator does not have institutional access to Embase, Web of Science,
-or Scopus. Those searches therefore cannot be executed as registered.
+### What the registration says
 
-This requires an amendment before screening concludes, because the registered
-search strategy is a public commitment and a review that silently searches
-fewer databases than it registered has overstated its coverage.
+The registration lists four bibliographic sources under Databases:
+PubMed/MEDLINE, **Embase (Elsevier)**, **Web of Science Core Collection
+(Clarivate)**, and **Cochrane CENTRAL**; plus ClinicalTrials.gov and WHO ICTRP
+as trial registries.
 
-### Proposed substitution, all freely accessible
+### What was done, and why
 
-| Registered | Status | Proposed |
+The investigator has no institutional subscription to Embase, Web of Science,
+or Scopus. Those searches could not be executed as registered. Rather than
+search fewer databases than registered and leave the gap implicit:
+
+| Registered | Status | Executed |
 |---|---|---|
-| PubMed/MEDLINE | Executed 2026-09-13, 9,088 records | unchanged |
-| Embase | No access | **Europe PMC** — free API; indexes MEDLINE plus PMC, preprints, patents and theses, with substantial coverage beyond PubMed |
-| Web of Science | No access | **OpenAlex** — free API; open bibliographic graph with citation data, the closest freely available analogue for coverage and citation chasing |
-| Cochrane CENTRAL | Access uncertain | Attempt; if unavailable, record as not searched |
-| ClinicalTrials.gov | Free | unchanged |
-| WHO ICTRP | Free | unchanged |
+| PubMed/MEDLINE | searched | 2026-09-13, 9,089 identified |
+| Embase | no access | **Europe PMC**, 2026-09-14, 890 retrieved |
+| Web of Science | no access | not substituted at this stage |
+| Cochrane CENTRAL | access uncertain | not yet searched |
+| ClinicalTrials.gov | free | not yet searched |
+| WHO ICTRP | free | not yet searched |
 
-### What the amendment must say
+### The `NOT SRC:MED` restriction, and why it is not a narrowing
 
-1. Which registered databases were not searched, and that the reason was lack
-   of institutional access — not a judgement that they were unnecessary.
-2. Which free sources replaced them, and that the substitution was made before
-   screening concluded rather than after seeing results.
-3. That coverage is consequently not equivalent to a review with full
-   commercial database access, stated in the limitations rather than implied.
+Europe PMC was searched restricted to records **not already in MEDLINE**.
 
-Europe PMC and OpenAlex are genuine sources, not a face-saving gesture: between
-them they index a large majority of what Embase and Web of Science cover for
-biomedical literature. But "a large majority" is not "all", and the difference
-belongs in the limitations section where a reader can weigh it.
+MEDLINE had already been searched natively, using controlled vocabulary
+(`[MeSH]`), publication-type filters (`[pt]`) and title/abstract field tags
+(`[tiab]`). Europe PMC's syntax cannot express those with equivalent
+semantics — its free-text terms search **full text** for open-access records,
+so the same concept set returns 239,868 records unrestricted against PubMed's
+9,089. Even after wrapping every term as `(TITLE:x OR ABSTRACT:x)` to
+approximate `[tiab]`, it returns 5,982.
 
-### Sequencing
+Fetching all 5,982 and deduplicating would have imported several thousand
+MEDLINE records that the registered PubMed strategy deliberately excludes via
+filters Europe PMC cannot reproduce — quietly *widening* a registered search
+under the appearance of merely adding a database. The restriction confines
+Europe PMC's contribution to the coverage it uniquely offers: preprints,
+PMC-only deposits, theses and agricultural literature, which is precisely the
+role the Embase substitution is meant to fill.
 
-This does not block Plan B. Screening the existing 9,088-record PubMed corpus
-proceeds; the additional sources add records that enter the same screening
-pipeline. The amendment must be filed on OSF before the review reports its
-final PRISMA counts.
+### What this costs, stated plainly
+
+Coverage is **not** equivalent to a review with full commercial database
+access. Europe PMC does not replicate Embase's indexing of European and
+pharmacological literature, and no substitute was found for Web of Science.
+This is carried in the manuscript's limitations
+(`manuscript/METHODS.md`, Section 11), not offset by a claim of equivalence.
+
+---
+
+## Amendment 2 (enacted 2026-09-14): deduplication of preprint pairs
+
+### The registered rule
+
+Deduplication by DOI, then PMID, then fuzzy title match additionally requiring
+the same first-author surname and the same publication year; and separately,
+that two records which both carry an identifier and disagree on it are never
+merged.
+
+### The defect
+
+Both of those guards are correct for two journal articles and wrong for a
+preprint and its own published version:
+
+- a preprint necessarily **precedes** publication, so the years never match;
+- a preprint and the published article **always** carry different DOIs
+  (`10.1101/...` from bioRxiv/medRxiv, `10.21203/rs.3.rs-...` from Research
+  Square, against the journal's own).
+
+In the combined corpus, 137 preprints shared an exact normalised title and an
+identical first author with a PubMed record. The year gate blocked all of
+them; once that was relaxed, the DOI-conflict guard still blocked 136. Every
+one was being counted as two separate studies.
+
+### The change
+
+- Publication-year equality relaxed to a ±2-year window **when one record of
+  the pair is a preprint**; exact-year matching retained for all other pairs.
+- The DOI-conflict guard **disapplied for preprint pairs**; retained in full
+  for every other pair.
+- The PMID guard is untouched. Europe PMC preprints carry no PMID, so a
+  preprint pair never reaches it; any pair that does is two indexed records
+  disagreeing on a MEDLINE identifier, which remains decisive.
+
+A preprint is identified from Europe PMC's own `SRC:PPR` source
+classification, which is authoritative, not inferred from a DOI prefix, which
+would be a heuristic.
+
+What carries a preprint merge is therefore the conjunction that remains: fuzzy
+title ≥ 95, identical first-author surname, and year within ±2.
+
+### Effect and audit
+
+192 duplicates removed from a 9,978-record union, leaving **9,786**. All 184
+cross-source merges were inspected: 139 matched on an exactly identical
+normalised title, and the 45 non-exact matches differ only by casing, dash
+style, an added word such as "novel", or a conference-abstract prefix. No
+over-merging was found.
+
+---
+
+## Amendment 3 (enacted 2026-09-14): screening instrument v1 → v2
+
+### This is registered behaviour, not a deviation from it
+
+Protocol Section 5, Stage 0 commits to: "Cohen's kappa computed, all
+disagreements inspected, **eligibility criteria and AI prompt refined**.
+Repeated until kappa ≥ 0.75." Refining the instrument after a calibration
+round is what the registration says will happen. It is recorded here because
+the instrument's SHA-256 is written into every decision, so the change must be
+traceable — not because it is unexpected.
+
+### What round 1 found
+
+150 of the 300 calibration records were screened under `screening_v1.md`
+(SHA-256 `dbf587fc…`). Two defects were identified independently by all three
+screening runs:
+
+**(a) No criterion for an ineligible study design.** Include criterion 2
+required one of five designs (RCT, non-randomised trial, cohort, case-control,
+cross-sectional), but the exclusion list's `not_primary` covered only reviews,
+editorials, comments, letters and conference abstracts. A study with a design
+on neither list — a case series, a descriptive molecular-profiling series, an
+in-silico database re-analysis, a Mendelian randomisation on summary data —
+could not be excluded on any available criterion. Such records were being
+included at confidence 0.5–0.65 for want of a criterion that existed. The
+observed include rate was **57%**, far above what protocol Section 5 Stage 3
+anticipates.
+
+**(b) `ncrna_only` was unreachable.** The instrument directs the screener to
+use "the FIRST criterion that applies". An ncRNA-only study also has no
+eligible measured marker, so `no_measured_marker` (listed third) always
+pre-empted `ncrna_only` (listed fourth). The criterion could never fire as
+written.
+
+### The changes in v2
+
+Each is traced to its authority. Where the protocol settles the question, v2
+aligns the instrument *with* the registered protocol rather than changing it.
+
+| Change | Authority |
+|---|---|
+| `not_primary` extended to cover a design not among the five eligible ones | Protocol §3.1 already restricts Design to those five; v1 simply provided no criterion to enforce it |
+| `ncrna_only` applied **before** `no_measured_marker` whenever an ncRNA was measured, by re-wording rather than reordering the registered `CRITERIA` tuple | Restores the criterion's evident registered intent; the tuple order is preserved because it maps to the human screening keypad |
+| "diagnosis" added to the approach-link list | Protocol §3.1 says "a clinical or public health decision"; the registered PubMed query already searched `diagnos*`. v1 omitted it inconsistently |
+| Study protocols (planned work, no data) → `not_primary` | Directly analogous to the registered "conference abstract without data" |
+| Marker measured only in non-human material, in a study that has human participants → `no_measured_marker` | Protocol §3.1 requires a measured marker in a human study; v1's `not_human` says "animal, in vitro, or cell-line **only**" and so did not reach hybrid designs |
+| Mendelian randomisation / summary-data designs → `not_primary` | The study did not measure the marker and its design is not among the five |
+| Analyses of individual-level data from an eligible underlying design remain eligible | Protocol §3.1 is about study design, and the design is that of the underlying study |
+
+**Two changes are investigator judgement with no direct protocol basis**, and
+are flagged as such so a reader can disagree with them specifically:
+
+1. **Histone marks measured as a circulating protein.** A histone
+   modification assayed on chromatin or in cells is eligible *including* when
+   the authors read it as a damage or inflammation signal (γ-H2AX by
+   immunohistochemistry), because judging intent rather than measurement is
+   unreliable at title/abstract. A histone protein measured in plasma or serum
+   as a circulating biomarker (citrullinated H3 as a NET marker) is treated as
+   a protein assay, not a chromatin-state measurement, and excluded.
+2. **Sperm chromatin integrity tests** (SCSA, DNA fragmentation index, high
+   DNA stainability) are excluded as `no_measured_marker`: they measure DNA
+   strand breakage and packaging, not a regulatory epigenetic mark.
+
+### Consequences for the decision log
+
+Round-1 decisions were made under `dbf587fc…` and are **superseded, not
+reused**. They are retained in the log for audit but take no part in any
+reported statistic. Calibration is re-run in full under v2
+(`0b2565e2d7be6fe29dcb81e6d34b831546476f85c5256cdabfc313e353d335da`).
+
+### What remains outstanding
+
+The registered Stage 0 gate is Cohen's kappa ≥ 0.75 **between the investigator
+and the model**, on the same 300 records screened blind. No human screening has
+been done, so no kappa exists and the gate has not been passed. Round 1 was an
+instrument-shakedown, not a calibration in the registered sense, and it is not
+reported as one.
