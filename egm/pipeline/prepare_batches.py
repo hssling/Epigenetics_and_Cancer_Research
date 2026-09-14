@@ -154,6 +154,12 @@ def main() -> None:
     parser.add_argument("--out-dir", type=pathlib.Path, required=True)
     parser.add_argument("--batch-size", type=int, default=50)
     parser.add_argument("--stage", choices=list(STAGES), required=True)
+    # Required, with no default. The prompt hash is stamped into every
+    # decision in the batch, so a defaulted version would silently label a
+    # run with a superseded instrument -- exactly the drift the hash exists
+    # to make detectable.
+    parser.add_argument("--prompt-version", required=True,
+                        help="e.g. v2 -- must match the instrument actually used")
     parser.add_argument(
         "--record-ids", type=pathlib.Path,
         help="optional JSON list of record_ids to select",
@@ -169,7 +175,8 @@ def main() -> None:
             )
 
     paths = prepare(
-        args.corpus, args.out_dir, args.batch_size, args.stage, record_ids
+        args.corpus, args.out_dir, args.batch_size, args.stage, record_ids,
+        args.prompt_version,
     )
     for path in paths:
         print(path)

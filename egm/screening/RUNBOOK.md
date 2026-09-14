@@ -3,19 +3,52 @@
 Execution sequence for the registered screening procedure (OSF 3xtf2).
 Each step's artefacts are committed before the next begins.
 
-**Prerequisite:** `ANTHROPIC_API_KEY` exported, or `ant auth login` completed.
-The key is read from the environment and never written to the repository.
+**Corpus:** `search/raw/combined_corpus_v3.json` — 9,786 records (PubMed 9,088
++ Europe PMC 890, 192 duplicates removed). Do not screen
+`pubmed_corpus_with_abstracts.json`: it predates the Europe PMC merge and
+would silently drop 698 records.
+
+**Instrument:** `pipeline/prompts/screening_v2.md`, SHA-256
+`0b2565e2d7be6fe29dcb81e6d34b831546476f85c5256cdabfc313e353d335da`.
+v1 (`dbf587fc…`) is superseded — see `protocol/amendments.md`, Amendment 3.
+
+---
+
+## Two ways to run the AI screening
+
+The registered design does not specify how the model is reached, only that the
+model, the prompt hash and the confidence are recorded with every decision.
+Both paths below satisfy that and write the same schema to the same log.
+
+| | Path A — API | Path B — subagents |
+|---|---|---|
+| Needs | `ANTHROPIC_API_KEY` in the environment | nothing beyond a Claude Code session |
+| Driver | `pipeline/run_screening.py` | `pipeline/prepare_batches.py` + dispatched agents + `pipeline/collect_batches.py` |
+| Cost visibility | per-call usage log | none — no token accounting |
+| Throughput | sequential, resumable per record | parallel, resumable per batch |
+
+**Path B is the one currently in use**, because no API key is available. It is
+not a workaround for the integrity rules: `collect_batches` enforces
+set-equality between a batch's records and its decisions, rejects a decision
+whose `prompt_sha256` or `model_id` disagrees with the batch, refuses to
+collect a batch twice, and writes nothing at all if any check fails.
+
+If a key becomes available, Path A can be used for later stages without
+invalidating earlier ones, provided `model_id` and `prompt_sha256` are
+unchanged — the log records which is which.
+
+---
 
 ## 1. Draw the calibration sample
 
     cd egm
     python -m pipeline.draw_sample calibration \
-      --corpus search/raw/pubmed_corpus_with_abstracts.json \
+      --corpus search/raw/combined_corpus_v3.json \
       --out screening/calibration_300.json
 
 Records the seed. Commit the sample.
 
-## 2. Screen it blind
+## 2. Screen it blind — this is the investigator's step
 
     python -m pipeline.screen_app \
       --sample screening/calibration_300.json \
@@ -26,9 +59,16 @@ Open http://127.0.0.1:8765/. Keys: `i` include, `e` exclude then `1`-`7`,
 `u` unclear. Resumable — stop and restart freely. Roughly 1.5-2.5 hours.
 
 **Do not run step 3 first.** Screening after seeing AI decisions is not blind,
-and the registration commits to blind calibration.
+and the registration commits to blind calibration. `screen_app` cannot display
+an AI decision by construction, but the ordering is yours to keep.
 
-## 3. Screen the same sample with each candidate model
+**No substitute exists for this step.** The registered Stage 0 gate is Cohen's
+kappa between the *investigator* and the model. A second AI run measures
+instrument reliability, not calibration, and must never be reported as kappa.
+
+## 3. Screen the same sample with the model
+
+### Path A
 
     python -m pipeline.run_screening \
       --sample screening/calibration_300.json \
@@ -37,10 +77,26 @@ and the registration commits to blind calibration.
       --usage screening/usage_calibration_opus5.jsonl \
       --stage calibration
 
-Repeat with `claude-haiku-4-5`. Expected cost: ~$1.83 and ~$0.37.
-Check the usage log for actual token spend — Opus 5 runs adaptive thinking
-and thinking bills as output, so the full-run projection comes from here, not
-from an estimate.
+Expected cost ~$1.83 on Opus 5. Check the usage log for actual spend — Opus 5
+runs adaptive thinking and thinking bills as output.
+
+### Path B
+
+    python -c "from pipeline.prepare_batches import prepare; import json; \
+      prepare('search/raw/combined_corpus_v3.json','screening/batches_calib_v2',50,\
+      'calibration',json.load(open('screening/calibration_300_ids.json')),'v2')"
+
+Dispatch one agent per batch. Each agent must: read
+`pipeline/prompts/screening_v2.md` in full, read only its own batch, and write
+`batch_NNNN_decisions.jsonl` with all twelve schema keys on every line,
+`screener: "ai"`, the model id, and the v2 hash above. Then:
+
+    python -c "from pipeline.collect_batches import collect_all; \
+      print(collect_all('screening/batches_calib_v2',\
+      'screening/ai_calibration_opus5.jsonl','claude-opus-5'))"
+
+`collect_all` reports any batch whose decisions file is missing as `pending`
+rather than skipping it silently. Re-dispatch those and collect again.
 
 ## 4. Compute agreement and inspect disagreements
 
@@ -58,31 +114,47 @@ note which kind of revision it is:
   and you have now seen the disagreements, so a re-screen would not be blind.
 
 Record every round — seed, kappa, what was revised — in
-`egm/protocol/amendments.md`.
+`protocol/amendments.md`, and bump the instrument to a new version file so the
+hash changes with it.
 
 ## 5. Gate
 
-Proceed only when kappa >= 0.75. Screen the full corpus with whichever model
-has the better kappa. If the gate cannot be met after revision, the registered
-contingency applies: narrow to the exposure arm (4,029 records) as a recorded
-amendment.
+Proceed only when kappa >= 0.75. If the gate cannot be met after revision, the
+registered contingency applies: narrow to the exposure arm (4,029 records) as a
+recorded amendment.
 
 ## 6. Screen the corpus
 
+### Path A
+
     python -m pipeline.run_screening \
-      --sample search/raw/pubmed_corpus_with_abstracts.json \
+      --sample search/raw/combined_corpus_v3.json \
       --model <selected> \
       --out screening/screening_decisions.jsonl \
       --usage screening/usage_screening.jsonl \
       --stage screening
 
-Resumable; interrupt freely. Route every `unclear` to yourself before
-proceeding.
+### Path B
+
+    python -m pipeline.prepare_batches \
+      --corpus search/raw/combined_corpus_v3.json \
+      --out-dir screening/batches_screening \
+      --batch-size 50 \
+      --stage screening
+
+196 batches. Dispatch agents as in step 3, then:
+
+    python -c "from pipeline.collect_batches import collect_all; \
+      print(collect_all('screening/batches_screening',\
+      'screening/screening_decisions.jsonl','claude-opus-5'))"
+
+Both paths are resumable; interrupt freely. Route every `unclear` to yourself
+before proceeding.
 
 ## 7. Draw and screen the validation sample
 
     python -m pipeline.draw_sample validation \
-      --corpus search/raw/pubmed_corpus_with_abstracts.json \
+      --corpus search/raw/combined_corpus_v3.json \
       --decisions screening/screening_decisions.jsonl \
       --out screening/validation_1000.json
 
@@ -91,7 +163,9 @@ proceeding.
       --out screening/human_validation.jsonl \
       --stage validation
 
-Roughly 5-8 hours. This is the step that produces the published recall figure.
+Roughly 5-8 hours. This is the step that produces the published recall figure,
+and like step 2 it is the investigator's own work — an AI re-screen of records
+the same model already excluded measures nothing.
 
 ## 8. Compute recall
 

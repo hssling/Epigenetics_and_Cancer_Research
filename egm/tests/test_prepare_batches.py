@@ -209,7 +209,7 @@ def test_cli_writes_batches(tmp_path, monkeypatch):
     out = tmp_path / "batches"
     monkeypatch.setattr("sys.argv", [
         "prepare_batches", "--corpus", str(corpus), "--out-dir", str(out),
-        "--batch-size", "50", "--stage", "screening",
+        "--batch-size", "50", "--stage", "screening", "--prompt-version", "v1",
     ])
     prepare_batches.main()
     assert (out / "batch_0001.json").exists()
@@ -223,8 +223,39 @@ def test_cli_record_ids_file_is_honoured(tmp_path, monkeypatch):
     out = tmp_path / "batches"
     monkeypatch.setattr("sys.argv", [
         "prepare_batches", "--corpus", str(corpus), "--out-dir", str(out),
-        "--stage", "calibration", "--record-ids", str(ids),
+        "--stage", "calibration", "--prompt-version", "v1", "--record-ids", str(ids),
     ])
     prepare_batches.main()
     records = _load(out / "batch_0001.json")["records"]
     assert [r["record_id"] for r in records] == ["egm-000005", "egm-000006"]
+
+
+def test_cli_requires_an_explicit_prompt_version(monkeypatch, tmp_path, capsys):
+    """A defaulted prompt version would mislabel a run with a stale instrument.
+
+    The prompt SHA-256 is stamped into every decision in the batch and is the
+    only thing that makes instrument drift detectable in the log. If the CLI
+    defaulted to v1, a screening run launched after the v2 refinement would
+    carry v1's hash on 9,786 decisions and nothing would flag it.
+    """
+    corpus = _corpus(tmp_path, 3)
+    monkeypatch.setattr("sys.argv", [
+        "prepare_batches", "--corpus", str(corpus),
+        "--out-dir", str(tmp_path / "b"), "--stage", "screening",
+    ])
+    with pytest.raises(SystemExit):
+        prepare_batches.main()
+    assert "--prompt-version" in capsys.readouterr().err
+
+
+def test_batch_carries_the_hash_of_the_requested_version(tmp_path):
+    """v1 and v2 must produce different stamps, or the guard is decorative."""
+    corpus = _corpus(tmp_path, 3)
+    v1, = prepare_batches.prepare(corpus, tmp_path / "b1", 50, "screening", None, "v1")
+    v2, = prepare_batches.prepare(corpus, tmp_path / "b2", 50, "screening", None, "v2")
+
+    h1 = json.loads(v1.read_text(encoding="utf-8"))["prompt_sha256"]
+    h2 = json.loads(v2.read_text(encoding="utf-8"))["prompt_sha256"]
+
+    assert h1 != h2
+    assert h2 == "0b2565e2d7be6fe29dcb81e6d34b831546476f85c5256cdabfc313e353d335da"
