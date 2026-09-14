@@ -12,6 +12,7 @@ That ordering is the point of this file, not a courtesy.
 | 1 | 2026-09-14 | 4.1 Information sources | Europe PMC substituted for Embase, restricted to `NOT SRC:MED`. Web of Science not substituted. | No institutional access to Embase or Web of Science. See Amendment 1. |
 | 2 | 2026-09-14 | 4.4 Deduplication | Publication-year match relaxed to ±2 years, and the DOI-conflict guard disapplied, **for preprint pairs only** | A preprint and its published version necessarily differ in year and always differ in DOI. The registered rule double-counted 136 studies. See Amendment 2. |
 | 3 | 2026-09-14 | 5 Screening, Stage 0 | Screening instrument refined `screening_v1.md` → `screening_v2.md` after calibration round 1 | Registered Stage 0 behaviour ("eligibility criteria and AI prompt refined"). Round 1 exposed an unreachable criterion and a missing one. See Amendment 3. |
+| 4 | 2026-09-14 | 5 Screening, Stage 0 | Instrument refined `screening_v2.md` → `screening_v3.md` after calibration round 2 | Round 2 exposed two defects introduced by v2's own wording. See Amendment 4. |
 
 ---
 
@@ -197,3 +198,66 @@ and the model**, on the same 300 records screened blind. No human screening has
 been done, so no kappa exists and the gate has not been passed. Round 1 was an
 instrument-shakedown, not a calibration in the registered sense, and it is not
 reported as one.
+
+---
+
+## Amendment 4 (enacted 2026-09-14): screening instrument v2 → v3
+
+### What round 2 found
+
+All 300 calibration records were screened under `screening_v2.md`
+(`0b2565e2…`). The v2 changes worked as intended — `not_primary` fired 49
+times where under v1 it could not fire at all — but two defects **introduced
+by v2's own wording** were identified independently by multiple batches.
+
+**(a) "Tool development" was miscategorised as a design.** v2 listed "a
+methods or tool-development paper" among examples of a design not on the
+eligible list. Tool development is a study's *purpose*, not its design: a
+methylation classifier developed and evaluated in cases and controls is a
+case-control diagnostic-accuracy study. Protocol §6 lists
+`diagnostic-accuracy` as an in-scope modality, so these are eligible. The
+inconsistency was visible in the decisions — in one batch, four records of
+the same class were split, one excluded and three included.
+
+**(b) Two v2 bullets contradicted each other on secondary data.** v2 said
+analyses of existing individual-level cohort data are eligible, and *also*
+that a purely in-silico re-analysis of an existing database is
+`not_primary`. For a TCGA or GEO methylation paper both bullets apply and
+point opposite ways. Two batches reported being unable to resolve it; a third
+resolved it by following each paper's self-description, which makes
+eligibility depend on an author's choice of wording.
+
+Both classes are common in this corpus, so neither could be left to the
+full run.
+
+### The changes in v3
+
+| Change | Authority |
+|---|---|
+| "Tool development" removed from the ineligible-design examples; a classifier, assay or score developed **or evaluated in human participants forming an eligible design** is eligible, judged on the ordinary criteria | Protocol §6 lists `diagnostic-accuracy` as an in-scope modality; §3.1 restricts by design, and the design here is case-control or cohort |
+| A purely technical paper with **no human evaluation sample** remains `not_primary` | Protocol §3.1: no eligible design, no human measurement |
+| The "purely in-silico re-analysis" bullet is **deleted**. Eligibility never depends on who generated the data: secondary analysis of individual-level human data is eligible; only work using solely published summary statistics or database aggregates is `not_primary` | Investigator judgement. Protocol §3.1 defines eligibility by design and measurement and says nothing about data provenance, so v2's provenance test had no registered basis |
+| The human-measurement question is checked **before** `ncrna_only`, resolving a reported ordering collision | Protocol §3.1 requires the marker to be measured in a human study |
+| A bare tissue or tumour series with **no stated analytic design** returns `unclear` rather than being assumed to be cross-sectional or assumed to be a case series | The registered `unclear` route exists for exactly this; assuming either way would be a guess |
+
+### Stopping rule for instrument refinement
+
+Refinement stops here. The registered Stage 0 gate is Cohen's kappa between
+the **investigator** and the model, and no human screening has been done, so
+there is no anchor against which further refinement could be checked.
+Continuing to refine without one would tune the instrument toward the
+model's own judgement and call the result calibration, which it would not be.
+
+Rounds 1 and 2 were instrument shakedowns. They are reported as such, and
+the decisions from both are superseded.
+
+### Outstanding
+
+- No kappa exists. The Stage 0 gate has **not** been passed.
+- The include rate observed under v2 was 53.7%, which projects to roughly
+  5,250 full-text records from the 9,786-record corpus. That is consistent
+  with the map stage, which is AI-assisted coding of categorical fields, but
+  far above the 30-60 studies protocol §5 anticipates for manual
+  meta-analysis extraction. The registered contingency — narrowing to the
+  exposure arm (4,029 records) — is an investigator decision and has not
+  been taken.
