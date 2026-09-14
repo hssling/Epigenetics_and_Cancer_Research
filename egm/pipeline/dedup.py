@@ -7,11 +7,16 @@ from typing import Optional
 
 from rapidfuzz import fuzz
 
+from pipeline.config import PREPRINT_SOURCE_ID_PREFIX
 from pipeline.schema import DedupedRecord, SearchRecord
 
 _DOI_PREFIX = re.compile(r"^(https?://)?(dx\.)?doi\.org/", re.IGNORECASE)
 _PUNCT = re.compile(r"[^a-z0-9 ]")
 _SPACES = re.compile(r"\s+")
+
+# A preprint precedes its journal version by 0-2 years, so the two never share
+# a publication year. Applied ONLY when one record of a pair is a preprint.
+PREPRINT_YEAR_WINDOW = 2
 
 
 def normalise_doi(doi: Optional[str]) -> Optional[str]:
@@ -34,6 +39,38 @@ def _first_author_surname(record: SearchRecord) -> str:
 
 def _key(record: SearchRecord) -> str:
     return f"{record.source_db}:{record.source_id}"
+
+
+def _is_preprint(record: SearchRecord) -> bool:
+    """True for a Europe PMC preprint record (`source_id` prefix `PPR:`)."""
+    return record.source_id.startswith(PREPRINT_SOURCE_ID_PREFIX)
+
+
+def _years_compatible(
+    existing_year: Optional[int], candidate_year: Optional[int], preprint_pair: bool
+) -> bool:
+    """Whether two publication years may belong to the same study.
+
+    The exact-year gate exists to stop similar-titled but DISTINCT papers --
+    annual reports, serial trials, successive cohort waves -- from collapsing
+    into one record, and it earns its keep for every ordinary pair. A preprint
+    and its published version are by definition the same study, posted 0-2
+    years apart, so for that pair the gate is wrong rather than merely strict:
+    it double-counted 78 studies in the combined corpus (see
+    protocol/amendments.md, 2026-09-14). The relaxation is therefore narrowed
+    to pairs where at least one record is a preprint; everywhere else exact
+    equality is unchanged.
+
+    Absent years: an absent year is absence, never a wildcard and never a
+    stand-in zero (spec section 8.3 rule 1). `abs(None - 2021)` would raise,
+    so a pair in which either year is None falls back to the strict rule,
+    under which None never equals a real year and the merge is blocked. Two
+    records that both state no year compare equal under that rule, which is
+    the pre-existing behaviour and is left untouched.
+    """
+    if preprint_pair and existing_year is not None and candidate_year is not None:
+        return abs(existing_year - candidate_year) <= PREPRINT_YEAR_WINDOW
+    return existing_year == candidate_year
 
 
 def deduplicate(
@@ -64,12 +101,41 @@ def deduplicate(
         else:
             norm_title = normalise_title(record.title)
             surname = _first_author_surname(record)
+            record_is_preprint = _is_preprint(record)
             for position, existing in enumerate(survivors):
-                if existing["year"] != record.year or existing["surname"] != surname:
+                if existing["surname"] != surname:
+                    continue
+                preprint_pair = record_is_preprint or existing["is_preprint"]
+                if not _years_compatible(
+                    existing["year"], record.year, preprint_pair
+                ):
                     continue
                 # Two records that both carry an identifier, and disagree on it,
-                # are different papers however similar their titles.
-                if doi is not None and existing["doi"] is not None and doi != existing["doi"]:
+                # are different papers however similar their titles -- EXCEPT
+                # when one of them is a preprint. A preprint and its published
+                # version ALWAYS carry different DOIs (10.1101/... from bioRxiv
+                # or medRxiv, 10.21203/rs.3.rs-... from Research Square, against
+                # the journal's own), so for that pair a DOI disagreement is the
+                # expected state and carries no evidence of difference. Applying
+                # the guard there double-counted 136 studies in this corpus.
+                #
+                # What carries the merge instead is the conjunction that remains:
+                # fuzzy title >= threshold, an identical first-author surname, and
+                # a publication year within PREPRINT_YEAR_WINDOW. The preprint
+                # designation itself is not inferred from the DOI prefix but taken
+                # from Europe PMC's own source classification (SRC:PPR), which is
+                # authoritative rather than heuristic.
+                #
+                # The PMID guard is NOT relaxed: Europe PMC preprint records carry
+                # no PMID at all, so a preprint pair never reaches it, and any pair
+                # that does is two indexed records disagreeing on a MEDLINE
+                # identifier -- which remains decisive.
+                if (
+                    not preprint_pair
+                    and doi is not None
+                    and existing["doi"] is not None
+                    and doi != existing["doi"]
+                ):
                     continue
                 if pmid is not None and existing["pmid"] is not None and pmid != existing["pmid"]:
                     continue
@@ -106,6 +172,7 @@ def deduplicate(
             "norm_title": normalise_title(record.title),
             "surname": _first_author_surname(record),
             "year": record.year,
+            "is_preprint": _is_preprint(record),
             "doi": doi,
             "pmid": pmid,
         })

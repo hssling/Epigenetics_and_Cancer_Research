@@ -121,14 +121,21 @@ def test_conflicting_dois_do_not_merge_despite_identical_titles(tmp_path):
     A genuinely duplicated pair rides along so the merge is a realistic one:
     PrismaFlow.validate() refuses a flow that excluded nothing at all, and a
     zero-removal merge of two real corpora would itself be a defect.
+
+    The Europe PMC fixtures are deliberately PMC:, not PPR:. As of 2026-09-14
+    the DOI-conflict guard is scoped to non-preprint pairs, because a preprint
+    and its published version always disagree on DOI by construction (see
+    test_preprint_with_conflicting_doi_DOES_merge in test_dedup.py). Written
+    with PPR: fixtures this test would merge them and so would no longer
+    exercise the guard at all -- it would pass or fail for the wrong reason.
     """
     pubmed_records = [
         _pubmed("111", doi="10.1000/published"),
         _pubmed("222", doi="10.1000/decoy", title="An unrelated methylation study"),
     ]
     europepmc_records = [
-        _europepmc("PPR:PPR1", doi="10.1000/OTHER"),
-        _europepmc("PPR:PPR2", doi="10.1000/decoy",
+        _europepmc("PMC:PMC1", doi="10.1000/OTHER"),
+        _europepmc("PMC:PMC2", doi="10.1000/decoy",
                    title="An unrelated methylation study"),
     ]
     pubmed_path, europepmc_path, out, prisma = _inputs(
@@ -139,7 +146,7 @@ def test_conflicting_dois_do_not_merge_despite_identical_titles(tmp_path):
     kept = _records(out)
     merged_from = [set(r["merged_from"]) for r in kept]
     assert {"pubmed:111"} in merged_from, "the PubMed record was collapsed away"
-    assert {"europepmc:PPR:PPR1"} in merged_from, "the preprint was collapsed away"
+    assert {"europepmc:PMC:PMC1"} in merged_from, "the PMC record was collapsed away"
     assert len(kept) == 3, "conflicting DOIs must not be collapsed"
     assert counts["removed_fuzzy"] == 0
     assert counts["removed_total"] == 1  # the decoy pair only

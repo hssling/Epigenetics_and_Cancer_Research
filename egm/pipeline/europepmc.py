@@ -42,6 +42,7 @@ from typing import Any, Optional, Sequence
 
 import requests
 
+from pipeline.config import SOURCE_ID_SEPARATOR
 from pipeline.schema import SearchRecord
 
 BASE_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
@@ -186,7 +187,7 @@ def _to_record(
             "Europe PMC result is missing 'source' and/or 'id'; source_id "
             f"cannot be formed: {result!r}"
         )
-    source_id = f"{source}:{identifier}"
+    source_id = f"{source}{SOURCE_ID_SEPARATOR}{identifier}"
 
     title = (result.get("title") or "").strip()
     if not title:

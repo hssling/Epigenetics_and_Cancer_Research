@@ -18,3 +18,11 @@ ELIGIBLE_MARKERS = ("methylation", "histone", "chromatin", "clock")
 
 NCBI_TOOL_NAME = "egm-pipeline"
 NCBI_RATE_LIMIT_SECONDS = 0.34  # ~3 requests/sec without an API key
+
+# Europe PMC composes `source_id` as "<SRC>:<id>" (pipeline/europepmc.py
+# `_to_record`), where SRC is the Europe PMC source code. "PPR" is its
+# preprint source. Both the builder and the deduplicator need this
+# convention, so it is stated once here rather than as a bare string in each.
+SOURCE_ID_SEPARATOR = ":"
+EUROPEPMC_PREPRINT_SOURCE = "PPR"
+PREPRINT_SOURCE_ID_PREFIX = f"{EUROPEPMC_PREPRINT_SOURCE}{SOURCE_ID_SEPARATOR}"

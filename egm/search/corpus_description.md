@@ -2,16 +2,16 @@
 
 # Corpus description
 
-Source artefact: `combined_corpus.json`
+Source artefact: `combined_corpus_v3.json`
 
-**Total records retrieved: 9968**
+**Total records retrieved: 9786**
 
 ## Records by source database
 
 | source_db | records | % |
 | --- | ---: | ---: |
-| pubmed | 9088 | 91.2 |
-| europepmc | 880 | 8.8 |
+| pubmed | 9088 | 92.9 |
+| europepmc | 698 | 7.1 |
 
 ### Europe PMC records by source prefix
 
@@ -19,7 +19,7 @@ Derived from `source_id`. PPR = preprint, PMC = PubMed Central (non-MEDLINE), ET
 
 | prefix | records |
 | --- | ---: |
-| PPR | 672 |
+| PPR | 490 |
 | PMC | 189 |
 | ETH | 13 |
 | AGR | 6 |
@@ -30,24 +30,24 @@ Derived from `source_id`. PPR = preprint, PMC = PubMed Central (non-MEDLINE), ET
 | --- | ---: |
 | 2015 | 527 |
 | 2016 | 571 |
-| 2017 | 639 |
-| 2018 | 725 |
-| 2019 | 804 |
-| 2020 | 895 |
-| 2021 | 868 |
-| 2022 | 839 |
-| 2023 | 743 |
-| 2024 | 959 |
-| 2025 | 1319 |
-| 2026 | 1077 |
+| 2017 | 636 |
+| 2018 | 721 |
+| 2019 | 793 |
+| 2020 | 876 |
+| 2021 | 841 |
+| 2022 | 806 |
+| 2023 | 717 |
+| 2024 | 933 |
+| 2025 | 1291 |
+| 2026 | 1072 |
 | year absent (null) | 0 |
 | year outside 2015-2026 | 2 |
 
-Records with no year are counted on their own row, never folded into a year bucket and never dropped: the rows above sum to 9968.
+Records with no year are counted on their own row, never folded into a year bucket and never dropped: the rows above sum to 9786.
 
 ## Journals
 
-Distinct journals: **1566**. Records with no journal recorded: **685**.
+Distinct journals: **1566**. Records with no journal recorded: **503**.
 
 Top 20 journals by record count:
 
@@ -76,16 +76,16 @@ Top 20 journals by record count:
 
 ## Abstract availability
 
-Records with an abstract: **9963 / 9968 (99.9%)**.
+Records with an abstract: **9781 / 9786 (99.9%)**.
 
-Abstract length in characters, over the 9963 records that HAVE one (records with a null abstract are excluded from these statistics, not counted as zero-length):
+Abstract length in characters, over the 9781 records that HAVE one (records with a null abstract are excluded from these statistics, not counted as zero-length):
 
 | statistic | characters |
 | --- | ---: |
-| median | 1791.0 |
-| Q1 | 1560.0 |
-| Q3 | 2068.0 |
-| IQR | 508.0 |
+| median | 1790.0 |
+| Q1 | 1557.0 |
+| Q3 | 2063.5 |
+| IQR | 506.5 |
 
 Quartiles use Tukey's method (the median is excluded from both halves when n is odd), computed by sorting and indexing.
 
@@ -93,8 +93,8 @@ Quartiles use Tukey's method (the median is excluded from both halves when n is 
 
 | identifier | records | % |
 | --- | ---: | ---: |
-| DOI | 9711 | 97.4 |
-| PMID | 9088 | 91.2 |
+| DOI | 9529 | 97.4 |
+| PMID | 9088 | 92.9 |
 
 ## Deduplication
 
@@ -102,10 +102,10 @@ Quartiles use Tukey's method (the median is excluded from both halves when n is 
 
 | dedup_rule | records |
 | --- | ---: |
-| unique | 9958 |
-| fuzzy_title | 10 |
+| unique | 9596 |
+| fuzzy_title | 190 |
 
-Records built from more than one retrieved record (`len(merged_from) > 1`): **10**.
+Records built from more than one retrieved record (`len(merged_from) > 1`): **190**.
 
 ## What this is not
 
