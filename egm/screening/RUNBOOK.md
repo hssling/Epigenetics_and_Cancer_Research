@@ -8,9 +8,11 @@ Each step's artefacts are committed before the next begins.
 `pubmed_corpus_with_abstracts.json`: it predates the Europe PMC merge and
 would silently drop 698 records.
 
-**Instrument:** `pipeline/prompts/screening_v2.md`, SHA-256
-`0b2565e2d7be6fe29dcb81e6d34b831546476f85c5256cdabfc313e353d335da`.
-v1 (`dbf587fc…`) is superseded — see `protocol/amendments.md`, Amendment 3.
+**Instrument:** `pipeline/prompts/screening_v3.md`, SHA-256
+`03fc7b73d06362f994e3855cb6f28261b70b9f4552a5864a6cc88f78426bd58a`.
+v1 (`dbf587fc…`) and v2 (`0b2565e2…`) are superseded — see
+`protocol/amendments.md`, Amendments 3 and 4. Decisions made under a superseded
+instrument are retained for audit and take no part in any reported statistic.
 
 ---
 
@@ -27,11 +29,16 @@ Both paths below satisfy that and write the same schema to the same log.
 | Cost visibility | per-call usage log | none — no token accounting |
 | Throughput | sequential, resumable per record | parallel, resumable per batch |
 
-**Path B is the one currently in use**, because no API key is available. It is
-not a workaround for the integrity rules: `collect_batches` enforces
+**Path B is the one that was used** for the completed run, because no API key
+is available. It is not a workaround for the integrity rules: `collect_batches` enforces
 set-equality between a batch's records and its decisions, rejects a decision
 whose `prompt_sha256` or `model_id` disagrees with the batch, refuses to
-collect a batch twice, and writes nothing at all if any check fails.
+collect a batch twice, rejects a batch whose `reason` strings look templated
+rather than written per record, and writes nothing at all if any check fails.
+
+That last check exists because it nearly mattered: an agent given 200 records
+at once wrote a keyword-matching script and had it emit the whole batch with
+correct provenance stamps. Every other check would have passed it.
 
 If a key becomes available, Path A can be used for later stages without
 invalidating earlier ones, provided `model_id` and `prompt_sha256` are
@@ -72,8 +79,8 @@ instrument reliability, not calibration, and must never be reported as kappa.
 
     python -m pipeline.run_screening \
       --sample screening/calibration_300.json \
-      --model claude-opus-5 \
-      --out screening/ai_calibration_opus5.jsonl \
+      --model claude-sonnet-5 \
+      --out screening/ai_calibration_v4.jsonl \
       --usage screening/usage_calibration_opus5.jsonl \
       --stage calibration
 
@@ -83,17 +90,17 @@ runs adaptive thinking and thinking bills as output.
 ### Path B
 
     python -c "from pipeline.prepare_batches import prepare; import json; \
-      prepare('search/raw/combined_corpus_v3.json','screening/batches_calib_v2',50,\
-      'calibration',json.load(open('screening/calibration_300_ids.json')),'v2')"
+      prepare('search/raw/combined_corpus_v3.json','screening/batches_calib_v4',50,\
+      'calibration',json.load(open('screening/calibration_300_ids.json')),'v3')"
 
 Dispatch one agent per batch. Each agent must: read
-`pipeline/prompts/screening_v2.md` in full, read only its own batch, and write
+`pipeline/prompts/screening_v3.md` in full, read only its own batch, and write
 `batch_NNNN_decisions.jsonl` with all twelve schema keys on every line,
-`screener: "ai"`, the model id, and the v2 hash above. Then:
+`screener: "ai"`, the model id, and the v3 hash above. Then:
 
     python -c "from pipeline.collect_batches import collect_all; \
-      print(collect_all('screening/batches_calib_v2',\
-      'screening/ai_calibration_opus5.jsonl','claude-opus-5'))"
+      print(collect_all('screening/batches_calib_v4',\
+      'screening/ai_calibration_v4.jsonl','claude-sonnet-5'))"
 
 `collect_all` reports any batch whose decisions file is missing as `pending`
 rather than skipping it silently. Re-dispatch those and collect again.
@@ -102,8 +109,7 @@ rather than skipping it silently. Re-dispatch those and collect again.
 
     python -m pipeline.report_agreement \
       --human screening/human_calibration.jsonl \
-      --ai screening/ai_calibration_opus5.jsonl \
-      --out screening/agreement_opus5.json
+      --ai screening/screening_decisions_sonnet.jsonl \n      --out screening/agreement_sonnet.json
 
 Read every disagreement. Where one reveals genuine ambiguity, revise — and
 note which kind of revision it is:
@@ -117,20 +123,27 @@ Record every round — seed, kappa, what was revised — in
 `protocol/amendments.md`, and bump the instrument to a new version file so the
 hash changes with it.
 
-## 5. Gate
+## 5. Gate  — **CURRENTLY CLOSED**
 
 Proceed only when kappa >= 0.75. If the gate cannot be met after revision, the
 registered contingency applies: narrow to the exposure arm (4,029 records) as a
 recorded amendment.
 
-## 6. Screen the corpus
+## 6. Screen the corpus — **DONE**
+
+Completed 2026-09-17: all 9,786 records, `screening_v3.md` (`03fc7b73…`),
+claude-sonnet-5, in `screening/screening_decisions_sonnet.jsonl`. 98 batches of
+100; every batch verified set-equal to its input before collection. Re-running
+is only necessary if the Stage 0 gate fails and the instrument changes.
+
+The commands below are kept for that case, and for the record.
 
 ### Path A
 
     python -m pipeline.run_screening \
       --sample search/raw/combined_corpus_v3.json \
       --model <selected> \
-      --out screening/screening_decisions.jsonl \
+      --out screening/screening_decisions_api.jsonl \
       --usage screening/usage_screening.jsonl \
       --stage screening
 
@@ -138,15 +151,15 @@ recorded amendment.
 
     python -m pipeline.prepare_batches \
       --corpus search/raw/combined_corpus_v3.json \
-      --out-dir screening/batches_screening \
-      --batch-size 50 \
-      --stage screening
+      --out-dir screening/batches_rerun \
+      --batch-size 100 \
+      --stage screening       --prompt-version v3
 
-196 batches. Dispatch agents as in step 3, then:
+98 batches of 100. Dispatch agents as in step 3, then:
 
     python -c "from pipeline.collect_batches import collect_all; \
-      print(collect_all('screening/batches_screening',\
-      'screening/screening_decisions.jsonl','claude-opus-5'))"
+      print(collect_all('screening/batches_rerun',\
+      'screening/screening_decisions_rerun.jsonl','claude-sonnet-5'))"
 
 Both paths are resumable; interrupt freely. Route every `unclear` to yourself
 before proceeding.
@@ -155,8 +168,13 @@ before proceeding.
 
     python -m pipeline.draw_sample validation \
       --corpus search/raw/combined_corpus_v3.json \
-      --decisions screening/screening_decisions.jsonl \
+      --decisions screening/screening_decisions_sonnet.jsonl \
       --out screening/validation_1000.json
+
+**Already drawn** (2026-09-17): 1,000 AI-excluded records, 500 low / 300 mid /
+200 high, seed 20260913. The confidence strata were reset before drawing —
+`protocol/amendments.md`, Amendment 5. Redrawing needs a new seed and a new
+amendment entry.
 
     python -m pipeline.screen_app \
       --sample screening/validation_1000.json \
@@ -171,7 +189,7 @@ the same model already excluded measures nothing.
 
     python -m pipeline.report_recall \
       --human screening/human_validation.jsonl \
-      --ai screening/screening_decisions.jsonl \
+      --ai screening/screening_decisions_sonnet.jsonl \
       --sample screening/validation_1000.json \
       --out screening/recall.json
 
