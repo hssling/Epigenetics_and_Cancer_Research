@@ -1,0 +1,1523 @@
+{
+  "model_a": "claude-opus-5",
+  "model_b": "claude-sonnet-5",
+  "prompt_sha256": "03fc7b73d06362f994e3855cb6f28261b70b9f4552a5864a6cc88f78426bd58a",
+  "n_shared": 1700,
+  "n_agree": 1600,
+  "raw_agreement": 0.9411764705882353,
+  "n_disagree": 100,
+  "n_include_vs_exclude": 23,
+  "matrix": {
+    "exclude->exclude": 724,
+    "exclude->include": 3,
+    "exclude->unclear": 4,
+    "include->exclude": 20,
+    "include->include": 852,
+    "include->unclear": 17,
+    "unclear->exclude": 42,
+    "unclear->include": 14,
+    "unclear->unclear": 24
+  },
+  "disagreements": [
+    {
+      "record_id": "egm-000008",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Abstract reports PhenoAge acceleration in an NHANES cohort without stating whether it was derived from DNA methylation or from clinical biomarkers."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.65,
+        "reason": "NHANES cohort computes PhenoAge acceleration from clinical biomarkers, not DNA methylation, so no epigenetic marker is directly measured."
+      }
+    },
+    {
+      "record_id": "egm-000078",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Whole-genome bisulfite sequencing performed in 62 enrolled subjects with methylation-derived hepatocyte cfDNA compared between fatty liver disease and healthy controls, tool development being a purpose not a design."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.5,
+        "reason": "Primarily a technical method-validation paper for spike-in-based cfDNA quantification from WGBS data, not an analytic study linking methylation to a clinical decision in a defined human comparison design."
+      }
+    },
+    {
+      "record_id": "egm-000129",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Cohort profile describing the GEHAS resource and summarising prior findings; whether this record reports a primary analysis linking measured methylation to an exposure cannot be determined from the abstract."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.6,
+        "reason": "This is a cohort-profile paper describing the GEHAS study design and summarizing findings from multiple separate substudies rather than reporting one primary analysis."
+      }
+    },
+    {
+      "record_id": "egm-000140",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Retrospective surgical series of H3 K27-altered diffuse midline glioma where the abstract reports genomic sequencing but does not state whether H3K27me3 was measured."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.65,
+        "reason": "H3 K27-altered status reflects an H3F3A genetic mutation identified by sequencing, not a directly measured histone modification or chromatin assay."
+      }
+    },
+    {
+      "record_id": "egm-000150",
+      "claude-opus-5": {
+        "decision": "exclude",
+        "criterion": "not_english",
+        "confidence": 0.6,
+        "reason": "Otherwise eligible twin study of PFAS exposure and cord blood methylation gestational age clocks, but published in Chinese as indicated by the bracketed translated title."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.8,
+        "reason": "Cord blood DNA methylation-based gestational age acceleration clocks (Knight, Bohlin, Haftorn) were measured in monozygotic twins and linked to prenatal PFAS exposure."
+      }
+    },
+    {
+      "record_id": "egm-000198",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "DNA methylation of the C14MC promoter was assayed by bisulfite Sanger sequencing but the abstract does not say whether this was in human tissue or only in HCC cell lines."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.75,
+        "reason": "C14MC (miR-379/656 cluster) promoter DNA methylation was measured by bisulfite Sanger sequencing in HCC cell lines and the TCGA-LIHC cohort and linked to diagnostic and prognostic utility."
+      }
+    },
+    {
+      "record_id": "egm-000203",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Retrospective two-group comparison of long- versus short-term glioblastoma survivors in which patient-level MGMT promoter methylation was among the molecular markers entered into the prognostic model, though methylation was abstracted from routine reports rather than being the study focus."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "MGMT promoter methylation is obtained from routine reports as a covariate in an extreme-phenotype survival comparison, leaving unclear whether methylation was actually measured for this study and whether the design qualifies as eligible."
+      }
+    },
+    {
+      "record_id": "egm-000221",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "DNA methylation profiling of meningiomas from 10 DMPA-exposed women with comparison only to external reference cohorts; the abstract does not state an analytic design that can be mapped to one of the five eligible designs."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.6,
+        "reason": "Case series of 10 women with DMPA-associated meningiomas characterized by methylation profiling, without a designed comparator group."
+      }
+    },
+    {
+      "record_id": "egm-000229",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.48,
+        "reason": "Retrospective institutional review in which 72 gliomas underwent methylation profiling and three hemispheric cases are described, but the abstract states no comparison, grouping or analytic design."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.55,
+        "reason": "Case series of 3 hemispheric gliomas characterized by H3K27me3 IHC and methylation profiling within a screened cohort of 72, without a designed comparison group."
+      }
+    },
+    {
+      "record_id": "egm-000247",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Individual-level DNA methylation from human hepatocellular carcinoma cohorts was analysed and associated with MAPRE2 expression and survival, though the record is dominated by summary-data Mendelian randomisation and cell-line work."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.4,
+        "reason": "Combines eQTL/pQTL Mendelian randomization with tumor DNA methylation-outcome associations in HCC; the abstract does not make clear whether individual-level methylation-survival data were analyzed as a primary cohort design."
+      }
+    },
+    {
+      "record_id": "egm-000277",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Methylation profiling of paired tumour components from four patients with no stated analytic design, so the design cannot be assigned."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.55,
+        "reason": "Case series of 9 sinonasal sarcoma tumor samples compared against a reference methylation classifier database, without a designed control group."
+      }
+    },
+    {
+      "record_id": "egm-000305",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "CARDIA cohort measuring DNAm epigenetic clocks in relation to stigma and structural discrimination as a modifiable social exposure."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.55,
+        "reason": "Compares DNAm-based epigenetic aging (IEAA, GrimAge, PhenoAge) between SGM and cisgender-straight CARDIA participants but does not tie the marker to a modifiable exposure or a clinical/public-health decision, only a disparity comparison."
+      }
+    },
+    {
+      "record_id": "egm-000318",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.62,
+        "reason": "Retrospective analysis of 422 individuals clinically tested for constitutional MLH1 promoter methylation, relating measured methylation to Lynch syndrome diagnosis."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.55,
+        "reason": "Retrospective series of 422 individuals undergoing constitutional MLH1 promoter methylation testing characterizes clinical phenotype and germline variants without a comparator group, matching the case-series exclusion."
+      }
+    },
+    {
+      "record_id": "egm-000324",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Single-arm phase 1 vaccine trial in MGMT unmethylated glioblastoma whose abstract does not state that MGMT methylation was measured or analysed as part of the study."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.55,
+        "reason": "Phase 1 vaccine trial in MGMT-unmethylated glioblastoma reports vaccine safety/immunogenicity; MGMT methylation only defines the enrolled population rather than being related to an exposure or decision under study."
+      }
+    },
+    {
+      "record_id": "egm-000337",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "The abstract describes clinical, physiological and molecular aging clocks without stating whether any epigenetic marker was measured."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.55,
+        "reason": "The mCAS aging-clock study explicitly describes plasma protein clocks and clinical/physiological data without ever mentioning DNA methylation or another epigenetic assay."
+      }
+    },
+    {
+      "record_id": "egm-000345",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Consecutive surgical PitNET patients with diagnostic lineage classification in which DNA methylation classifier results were available and compared in an exploratory subset."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "DNA methylation classification is applied only as an exploratory comparator in a small subset of pituitary tumors alongside the primary H&E image-based AI classifier, leaving its role and design unclear."
+      }
+    },
+    {
+      "record_id": "egm-000347",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "Retrospective investigation of 13 ovarian tumours with methylation profiling but no stated analytic design, comparison group or grouping."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.6,
+        "reason": "Thirteen ovarian CNS-type tumors are retrospectively characterized by methylation-based classification as a case series without a comparison group."
+      }
+    },
+    {
+      "record_id": "egm-000360",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "The material used for ChIP-qPCR is not stated and the study also includes a patient serum series, so eligibility of the chromatin measurement cannot be determined."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.65,
+        "reason": "Serum prolactin and SOX4-PRL-c-MYC signaling in retroperitoneal sarcoma are examined via ELISA, RNA-seq and ChIP-qPCR in cell lines, without a human epigenetic-marker measurement."
+      }
+    },
+    {
+      "record_id": "egm-000390",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "Multilocus methylation profiling by MS-MLPA and microarray in 101 Beckwith-Wiedemann patients to improve molecular diagnosis, with comparison by conception route."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.55,
+        "reason": "A case series of 101 Beckwith-Wiedemann spectrum patients characterizes multilocus methylation disturbance prevalence by microarray without a comparison group."
+      }
+    },
+    {
+      "record_id": "egm-000393",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Nine matched meningioma-sarcoma pairs underwent DNA methylation profiling but no analytic design is stated for the comparison."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.6,
+        "reason": "Nine matched meningioma-sarcoma tumor pairs are characterized by DNA methylation profiling as a molecular case series without a comparison group."
+      }
+    },
+    {
+      "record_id": "egm-000407",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Chiefly a mechanistic cell-line study; the abstract does not state the design of the human TCGA component or whether the measured methylation itself was linked to a clinical decision."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.6,
+        "reason": "Mechanistic cell-line study of B7-H4/PD-L1 methylation with only a correlative TCGA aside, not an epidemiological design."
+      }
+    },
+    {
+      "record_id": "egm-000411",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Retrospective series of 19 fusion-defined spindle cell tumours with DNA methylation profiling but no clearly stated analytic design or comparison group."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.6,
+        "reason": "Retrospective case series of 19 USP2/USP8-rearranged tumors with methylation profiling but no comparison group."
+      }
+    },
+    {
+      "record_id": "egm-000458",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "Cross-sectional and diurnal cohorts of healthy individuals with targeted enzymatic methyl-sequencing of plasma cfDNA, relating methylation-inferred cell composition to BMI, sex and age for cfDNA diagnostic design."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.5,
+        "reason": "Characterizes baseline cfDNA methylome/fragmentome variation in healthy individuals without linking it to a specific exposure or clinical decision."
+      }
+    },
+    {
+      "record_id": "egm-000459",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Methylation markers were used for cell-type inference in human plasma cohorts, but the abstract states no analytic design for the pan-cancer and neuroendocrine series."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.5,
+        "reason": "DNA methylation used only for cell-of-origin deconvolution in a study whose focus and findings concern fragmentation patterns, not a marker-decision link."
+      }
+    },
+    {
+      "record_id": "egm-000463",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "DNA methylome profiling was performed in 30 human DSRCT patients within a precision oncology programme, but the abstract states no analytic design for the series."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.55,
+        "reason": "Case series of 30 refractory DSRCT patients receiving molecular-profiling-guided therapy, without a comparison group."
+      }
+    },
+    {
+      "record_id": "egm-000464",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Histone lactylation appears to have been assayed in cell lines and murine tumours while the human component reports only expression, and the abstract does not state the material for the histone measurement."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.55,
+        "reason": "Histone lactylation mechanism established in ccRCC cell lines/xenografts; the human TCGA arm is a correlative aside, not an analytic design."
+      }
+    },
+    {
+      "record_id": "egm-000466",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "A multi-omics graph model incorporating scATAC-seq chromatin accessibility is evaluated for prognosis in TCGA-TNBC, but the abstract does not state the source material or analytic design of the human samples."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "TCGA-TNBC prognostic cohort used to externally validate a multi-omics model incorporating scATAC-seq chromatin accessibility linked to patient prognosis."
+      }
+    },
+    {
+      "record_id": "egm-000477",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "The abstract does not make clear whether the methylation-hypertension associations and SMR analyses used individual-level participant data or published summary statistics."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.65,
+        "reason": "EWAS-style analysis identifying blood/arterial DNA methylation sites associated with essential hypertension, complemented by SMR."
+      }
+    },
+    {
+      "record_id": "egm-000479",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.65,
+        "reason": "Citrullinated histone H3 was assayed by multiplex immunohistochemistry in tumour tissue from 1,927 colorectal cancer patients across three cohorts and related to survival."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.85,
+        "reason": "Citrullinated histone H3 (Cit-H3) measured as a NET/inflammatory marker via IHC, not a chromatin-state assay."
+      }
+    },
+    {
+      "record_id": "egm-000522",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "EPIC array methylation of DNMT3A-associated genes is reported after plasmid transfection experiments, leaving it unclear whether methylation was measured in the 78 patient tumours or only in cell lines."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "DNMT3A-mutation-associated differentially methylated genes are measured with an Infinium methylation array in a cohort of 78 thyroid carcinoma patients."
+      }
+    },
+    {
+      "record_id": "egm-000523",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "H3K4me3 is reported from mechanistic functional assays without stating the material, so it is unclear whether the histone mark was measured in the human tumour cohort or only in cell lines."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.55,
+        "reason": "H3K4me3 ChIP and functional characterization of the SETD1A-SYT8 axis is performed in cell lines/co-IP experiments rather than measured in the human CRC cohort itself."
+      }
+    },
+    {
+      "record_id": "egm-000532",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.4,
+        "reason": "Individual-level TCGA and GEO head and neck cancer data with DNA methylation features analysed alongside F2RL1 expression and survival for prognostic biomarker evaluation."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "F2RL1 is reported to correlate with 'DNA methylation features' via database analysis, but the abstract does not specify what was directly measured or in what design."
+      }
+    },
+    {
+      "record_id": "egm-000540",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.4,
+        "reason": "Multi-centre cohort of 97 newly diagnosed meningiomas characterised by DNA methylation classes alongside immune infiltration for prognostic stratification."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.55,
+        "reason": "DNA methylation class is used only as a pre-existing tumor classification label for cohort description; the study's measured markers are immune-cell infiltration by cytometry."
+      }
+    },
+    {
+      "record_id": "egm-000543",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.4,
+        "reason": "Pan-cancer analysis of individual-level TCGA data including DNA methylation correlated with SERINC2 expression, with immunohistochemical validation in 54 patients for prognosis."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "SERINC2's inverse correlation with DNA methylation is reported from a pan-cancer database analysis without specifying the measurement or design underlying this epigenetic claim."
+      }
+    },
+    {
+      "record_id": "egm-000572",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "TCGA individual-level NOTCH3 methylation was analysed alongside expression and mutation in cohorts with survival and immunotherapy outcomes, though the abstract emphasises expression rather than methylation for the clinical link."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "DNA methylation is listed among NOTCH3 alterations analyzed via TCGA multi-omics, but the abstract's results focus on expression/mutation and do not specify the methylation findings or design."
+      }
+    },
+    {
+      "record_id": "egm-000580",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Retrospective prognostic cohort of 153 H3 G34-mutant gliomas where DNA methylation is mentioned only as the ascertainment route for two cases, so it is unclear whether an epigenetic marker was measured as a study variable."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.7,
+        "reason": "H3 G34 is a genetic mutation used for tumor classification (confirmed by methylation in only 2/153 cases); the cohort's prognostic analysis does not measure an epigenetic mark."
+      }
+    },
+    {
+      "record_id": "egm-000599",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Thirteen cutaneous epithelioid or pleomorphic rhabdomyosarcomas underwent DNA methylation profiling compared against melanoma methylation classes for diagnostic reclassification."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.55,
+        "reason": "This is a descriptive case series of 13 rhabdomyosarcoma-diagnosed tumors characterized by methylation profiling against reference classes, without a comparison group design."
+      }
+    },
+    {
+      "record_id": "egm-000600",
+      "claude-opus-5": {
+        "decision": "exclude",
+        "criterion": "not_english",
+        "confidence": 0.72,
+        "reason": "The bracketed title in a Chinese-language journal indicates the article is not published in English."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "DNA methylation at the SORD locus is directly analyzed in the TCGA-LUAD cohort and linked to Osimertinib treatment resistance/response."
+      }
+    },
+    {
+      "record_id": "egm-000652",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.68,
+        "reason": "Comparison of cardiac allograft rejection cases with stable controls in which epigenetic cfDNA signatures were measured in patient plasma to quantify tissue-of-origin injury for rejection monitoring."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Abstract mentions \"epigenetic signatures\" used to quantify cfDNA tissue origin but does not specify that DNA methylation itself was the assayed marker."
+      }
+    },
+    {
+      "record_id": "egm-000662",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.58,
+        "reason": "Cross-sectional analytical study of 20 human glioblastoma cases in which phospho-histone H3 (PHH3), a histone modification, was measured by immunohistochemistry on tissue sections for prognostic biomarker assessment."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.55,
+        "reason": "Compares AI vs. pathologist scoring of the histone mark PHH3 in GBM tissue but does not relate it to a modifiable exposure or a stated clinical decision, only measurement-method agreement."
+      }
+    },
+    {
+      "record_id": "egm-000666",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Retrospective descriptive series of 14 CIC-rearranged sarcomas with methylation analysis on seven cases; the abstract does not establish a comparison group or a clear analytic design for the methylation component."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.6,
+        "reason": "Retrospective case series of 14 CIC-rearranged sarcomas without a designed comparison group."
+      }
+    },
+    {
+      "record_id": "egm-000677",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Methylation array data were generated on 970 meningiomas but the prognostic analysis concerns CDKN2A/B copy-number status; the abstract does not make clear whether the methylation marker itself was related to a clinical decision."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.7,
+        "reason": "DNA methylation array used only as a technical platform to derive copy-number data; methylation status itself is not the measured marker of interest."
+      }
+    },
+    {
+      "record_id": "egm-000689",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Multiomics profiling including epigenome sequencing of 99 serial samples from 34 CTCL patients, but the abstract states no analytic design or comparison structure for these descriptive clonal-evolution analyses."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.6,
+        "reason": "Longitudinal multiomic case series tracking CTCL clonal evolution across serial samples without a comparison group."
+      }
+    },
+    {
+      "record_id": "egm-000700",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "Multi-institutional retrospective diagnostic accuracy study of 5,516 human CNS tumour samples in which DNA methylation-based classification was measured as the reference diagnostic standard."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.7,
+        "reason": "Deep-learning model trained on histopathology images using pre-existing methylation-based labels as ground truth; this study does not itself measure DNA methylation."
+      }
+    },
+    {
+      "record_id": "egm-000712",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Human tumour cohorts were profiled for expression, but FOS-promoter hypomethylation appears to have been assayed in cells and the abstract does not state the material in which methylation was measured."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.7,
+        "reason": "DNA hypomethylation at the FOS promoter was shown only in vitro/in vivo mechanistic experiments; the human cohort data covered SLC46A1 expression and folate levels, not methylation."
+      }
+    },
+    {
+      "record_id": "egm-000718",
+      "claude-opus-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.55,
+        "reason": "The observational UK Biobank analysis used clinically derived biological age, while epigenetic ageing entered only through two-sample Mendelian randomisation on GWAS summary statistics rather than measured methylation."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.4,
+        "reason": "It is unclear whether the primary UK Biobank Biological Age Acceleration metric is methylation-based, and the GrimAge finding derives from two-sample MR using published summary statistics rather than direct measurement."
+      }
+    },
+    {
+      "record_id": "egm-000728",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Consecutive series of 60 high-grade gliomas with genome-wide methylation classification for diagnostic refinement, but the abstract states no analytic design or comparison structure."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.7,
+        "reason": "Genome-wide DNA methylation profiling classified 60 pediatric/AYA high-grade glioma cases into adult- versus pediatric-type molecular signatures for diagnostic refinement."
+      }
+    },
+    {
+      "record_id": "egm-000744",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Randomised lifestyle-counselling trial listing biological age as a secondary outcome without stating whether it was a DNA methylation-based measure."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.8,
+        "reason": "This RCT of CVD risk visualization and glucose monitoring assessed lifestyle and person-centered care outcomes with only an unspecified generic 'biological age' measure, no epigenetic marker."
+      }
+    },
+    {
+      "record_id": "egm-000782",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "Abstract does not state whether the methylation associations came from individual-level cohort measurements or from published EWAS/mQTL summary data."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.75,
+        "reason": "DNA methylation at ADCY7, AHRR, MYO1G and other loci was measured across life stages and linked maternal/adolescent smoking exposure to inflammatory bowel disease risk in offspring."
+      }
+    },
+    {
+      "record_id": "egm-000790",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "A methylation deconvolution framework is presented, but the abstract states no analytic design or evaluation sample, so eligibility cannot be judged."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "A methylation-deconvolution tool was applied to bulk DNA methylation profiles from glioblastoma patients and validated against molecular drivers and survival outcomes."
+      }
+    },
+    {
+      "record_id": "egm-000795",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Abstract does not make clear whether promoter methylation came from individual-level TCGA data or from database-level aggregate outputs of the GSCA and OncoDB portals."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "Promoter methylation of PLOD1/2/3 was analyzed in TCGA liver cancer data and linked to diagnostic and prognostic significance in hepatocellular carcinoma."
+      }
+    },
+    {
+      "record_id": "egm-000796",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "Multi-institution series of 17 clear cell meningiomas with DNA methylation profiling compared against other meningiomas and against WHO grade 1-2 tumours for recurrence risk."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.55,
+        "reason": "This is a 17-case series of clear cell meningioma characterizing molecular features including methylation clustering, without a designed comparison group."
+      }
+    },
+    {
+      "record_id": "egm-000797",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "Retrospective series of 14 PLNTY cases with methylation clustering but no comparison group and no stated analytic design."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.6,
+        "reason": "This is a 14-case series of PLNTY tumors characterizing molecular and methylation clustering features, without a designed comparison group."
+      }
+    },
+    {
+      "record_id": "egm-000852",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "Chromatin accessibility was measured by ATAC-seq in postmortem cortical tissue from three human TBI cases and three matched controls, supporting forensic molecular diagnosis."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.55,
+        "reason": "ATAC-seq chromatin accessibility measured in postmortem human brain relates to forensic postmortem-interval diagnostics, not a clinical or public health decision."
+      }
+    },
+    {
+      "record_id": "egm-000871",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "The abstract reports BAG6 being linked to aberrant DNA methylation without stating whether methylation was measured in human samples or only inferred alongside the cell and animal experiments."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "TCGA multi-omics analysis of BAG6 in HCC references aberrant DNA methylation alongside diagnostic AUC and prognosis, though the methylation assay is only briefly described."
+      }
+    },
+    {
+      "record_id": "egm-000875",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.68,
+        "reason": "Non-randomised experimental stress induction in 122 participants with epigenome-wide blood DNA methylation measured before and after the stressor."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Acute stress test (MAST) induces within-subject DNA methylation changes but the single-arm pre/post design does not clearly match any of the five eligible designs."
+      }
+    },
+    {
+      "record_id": "egm-000884",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Pan-cancer correlation of TCGA expression with microbial abundance includes chromatin proximity tests, but the abstract does not state whether a chromatin-state measurement was made or only motif annotation used."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.55,
+        "reason": "AP-2/microbiota pan-cancer study performs chromatin motif proximity analysis computationally rather than directly assaying chromatin state in patient samples."
+      }
+    },
+    {
+      "record_id": "egm-000959",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.85,
+        "reason": "Cross-sectional Taiwan Biobank study measuring IL6R and other CpG methylation in 96 adults and testing moderation of BMI and lifestyle factors on depression."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "It is unclear whether IL6R CpG methylation was directly measured in this Taiwan Biobank sample or only inferred from intersection with an external GSE dataset."
+      }
+    },
+    {
+      "record_id": "egm-000976",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Abstract does not state how H3K27-altered status was determined, so whether an epigenetic mark such as H3K27me3 was measured in the patients rather than a genetic mutation cannot be decided."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.82,
+        "reason": "H3K27-altered diffuse midline glioma status is diagnosed via metabolic/perfusion/diffusion MRI, not by directly measuring a chromatin mark."
+      }
+    },
+    {
+      "record_id": "egm-000983",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.42,
+        "reason": "Abstract does not make clear whether patient-level DNA methylation was analysed as a marker linked to prognosis or used only for annotation of an expression-based model, nor what design the human sample forms."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.5,
+        "reason": "DNA methylation data are integrated only for peripheral GO-enrichment analysis, while the prognostic risk model itself is built from gene expression, not linked to the methylation marker."
+      }
+    },
+    {
+      "record_id": "egm-000997",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.78,
+        "reason": "Case-control study measuring nasopharyngeal DNA methylation arrays in hospitalised COVID-19 patients versus healthy controls with repeat sampling at six weeks."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.55,
+        "reason": "Nasopharyngeal DNA methylation changes are characterized mechanistically after COVID-19 infection without linking to a modifiable exposure or a stated clinical/screening decision."
+      }
+    },
+    {
+      "record_id": "egm-001013",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "H3 K27M is reported as a mutation and the molecular profiles are not itemised, so the abstract does not establish whether any histone modification or chromatin-state marker was actually measured."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.55,
+        "reason": "H3 K27M is scored here as a mutation status used for stratification, not a directly measured histone modification."
+      }
+    },
+    {
+      "record_id": "egm-001019",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "Retrospective diagnostic comparison series of 15 ovarian neuroectodermal tumours in which DNA methylation microarray classification was compared with morphologic diagnosis and linked to outcome."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "This 15-patient series uses methylation-based molecular subtyping with post-hoc outcome comparison, but the abstract does not clearly establish a cohort, cross-sectional, or case-control design."
+      }
+    },
+    {
+      "record_id": "egm-001040",
+      "claude-opus-5": {
+        "decision": "exclude",
+        "criterion": "not_english",
+        "confidence": 0.75,
+        "reason": "Article is published in Chinese in Zhonghua bing li xue za zhi with a bracketed translated title, so it fails the English-language criterion despite including methylation analysis."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Methylation analysis is mentioned only briefly alongside NGS in a 14-case series without clarifying what was measured or a clear comparison design."
+      }
+    },
+    {
+      "record_id": "egm-001070",
+      "claude-opus-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.5,
+        "reason": "DNA methylation and DNAm age compared between early- and average-onset colorectal cancer without relating the marker to a measured modifiable exposure or a clinical decision."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.65,
+        "reason": "DNA methylation signature and DNAm age were directly characterized using individual-level TCGA data comparing early-onset and average-onset colorectal cancer."
+      }
+    },
+    {
+      "record_id": "egm-001075",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Fractal analysis of neutrophil nuclear chromatin in 53 grouped human participants related to prognosis and risk stratification, taken as a chromatin-state measurement."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.6,
+        "reason": "Fractal box-counting analysis of neutrophil nuclear texture is a structural/morphological imaging measure, not a direct assay of a regulatory epigenetic mark."
+      }
+    },
+    {
+      "record_id": "egm-001103",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "scATAC-seq chromatin profiling was done in a single patient plus reanalysed public samples with no stated analytic design, so eligibility cannot be determined."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.65,
+        "reason": "Single-patient case study integrating scRNA-seq/scATAC-seq with previously published samples has no defined comparison-group design among the five eligible."
+      }
+    },
+    {
+      "record_id": "egm-001131",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Technical comparison of methylation conversion chemistries whose human analytic design is not stated clearly enough to decide eligibility."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "Beyond the enzymatic-versus-bisulfite methodology comparison, the study reports a clinical finding linking IL-15 methylation to acalabrutinib response in the ACE-CL-001 CLL trial cohort."
+      }
+    },
+    {
+      "record_id": "egm-001152",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Fourteen dystonia cases recruited for long-read sequencing with methylome and episignature analysis, but the abstract states no analytic design, so design eligibility cannot be determined."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.55,
+        "reason": "Fourteen dystonia cases with unresolved variants were selected from a larger cohort for long-read sequencing with no stated comparison group, a case series."
+      }
+    },
+    {
+      "record_id": "egm-001161",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "Methylation of three lncRNA genes was measured by methylation-specific PCR in ovarian cancer tissue, with sensitivity and specificity estimates implying a non-cancer comparison group for diagnosis."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.4,
+        "reason": "The abstract reports sensitivity/specificity for a 56-sample ovarian cancer cohort without stating what comparison group, if any, the ROC analysis was performed against."
+      }
+    },
+    {
+      "record_id": "egm-001185",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "Human COPD lung tissue was assayed by Western blot while Nrf2 promoter methylation results are reported only in cigarette-smoke-treated cell lines, so the material of the methylation measurement is unclear."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.55,
+        "reason": "Nrf2 promoter methylation by bisulfite sequencing appears to have been assessed only in CSE-treated bronchial epithelial cells in vitro; human tissue analysis was limited to protein levels by Western blot."
+      }
+    },
+    {
+      "record_id": "egm-001209",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "Comparison of young versus elderly peripheral blood with LEF1 promoter methylation measured in humans and validated in an independent cohort, framed as an aging biomarker for inflammatory and neurodegenerative risk."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.55,
+        "reason": "The young-vs-elderly LEF1 methylation comparison is purely mechanistic (inflammation/neurodegeneration pathway) with no modifiable exposure or stated clinical decision."
+      }
+    },
+    {
+      "record_id": "egm-001217",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Prospective prognostic cohort of 144 AMI patients in which citrullinated histone H3 content of coronary thrombi is reported without stating the assay or preparation, which decides whether it is a chromatin measurement or a NET protein assay."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.85,
+        "reason": "Citrullinated histone H3 content in coronary thrombi is used as a NET/inflammation marker, not a direct chromatin-state measurement."
+      }
+    },
+    {
+      "record_id": "egm-001246",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "Retrospective series of nine H3F3B-mutant diffuse midline gliomas with DNA methylation profiling and H3K27me3 immunohistochemistry compared against other glioma groups for classification and prognosis."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.55,
+        "reason": "Case series of 9 patients with H3F3B-mutant DMG characterized by methylation profiling and H3K27me3 IHC, without a concurrently enrolled comparison group."
+      }
+    },
+    {
+      "record_id": "egm-001259",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Molecular characterisation of 16 glioma patients with metastasis using methylation profiling, but no analytic design is stated for the paired tumour series."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.6,
+        "reason": "Case series of 16 glioma patients with paired primary/recurrence/metastasis tissue characterized by methylation profiling, without a concurrent non-metastatic comparison group."
+      }
+    },
+    {
+      "record_id": "egm-001261",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Population PK/PD modelling reports gamma-H2AX as a pharmacodynamic biomarker but the abstract does not state the design or the material in which it was measured."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.65,
+        "reason": "Phase 1 trial data show phosphorylated H2AX (histone mark) as a pharmacodynamic biomarker of ATR-inhibitor treatment used to inform dose selection."
+      }
+    },
+    {
+      "record_id": "egm-001262",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.8,
+        "reason": "Observational case-cohort of 27 patients before and after bariatric surgery with chromatin immunoprecipitation performed on their monocytes."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.4,
+        "reason": "Human monocytes from a bariatric-surgery case-cohort underwent chromatin immunoprecipitation, but the abstract does not specify which mark was profiled or in what material."
+      }
+    },
+    {
+      "record_id": "egm-001276",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Recruitment-feasibility report of an RCT in which DNA methylation clocks were used for eligibility, with no analysis relating the marker to the intervention or a clinical decision described."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "ABLE randomized trial uses DNA methylation clocks to identify biologically older adults for a gerotherapeutic (alpha-ketoglutarate) intervention."
+      }
+    },
+    {
+      "record_id": "egm-001293",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.72,
+        "reason": "Cell-free DNA methylation was profiled in sepsis patients versus controls and used for tissue-of-origin deconvolution with stated diagnostic potential."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Methylation-based deconvolution is used to characterize cfDNA cell-of-origin in sepsis, but it is unclear whether this constitutes a direct epigenetic-marker measurement tied to a stated clinical decision versus a technical fragmentomics analysis."
+      }
+    },
+    {
+      "record_id": "egm-001296",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Integrative genomic study of MRI-derived brain age gap where the abstract does not make clear whether an epigenetic clock was measured in participants or drawn from external data."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.75,
+        "reason": "Brain age gap is estimated from MRI and linked to genetic heritability; genes are merely noted in the literature as associated with 'epigenetic clock,' with no methylation measured in this study's cohort."
+      }
+    },
+    {
+      "record_id": "egm-001298",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Method-comparison study for CDKN2A deletion detection in which methylation profiling was run only to derive copy-number data, leaving unclear whether an eligible epigenetic marker underpins the diagnostic comparison."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.75,
+        "reason": "DNA methylation array data are used only to derive copy-number-variation calls for CDKN2A deletion detection, not to assess methylation status itself."
+      }
+    },
+    {
+      "record_id": "egm-001345",
+      "claude-opus-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.8,
+        "reason": "PhenoAge in UK Biobank is computed from clinical blood biomarkers, with no DNA methylation or other epigenetic mark measured."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.4,
+        "reason": "PhenoAge/PhenoAgeAccel composition (clinical biomarkers vs. DNA methylation) is not specified in the abstract, and this determines eligibility."
+      }
+    },
+    {
+      "record_id": "egm-001372",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Abstract does not make clear whether blood DNA methylation was measured in individual participants or taken from mQTL summary statistics for the Mendelian randomisation."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.5,
+        "reason": "The DNA methylation-psoriasis link is established via epigenetic Mendelian randomization drawing on mQTL/GWAS summary statistics."
+      }
+    },
+    {
+      "record_id": "egm-001420",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "Prognostic cohort of anatomic staging in which MGMT status served only as a covariate, and the abstract does not state whether MGMT promoter methylation itself was measured."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.55,
+        "reason": "MGMT methylation status is used only as an adjustment covariate in the anatomic-staging survival model for H3 G34-mutant glioma, not as the studied exposure-outcome relationship."
+      }
+    },
+    {
+      "record_id": "egm-001436",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "Cox regression on individual-level TCGA methylation and survival data identified cg16007185 hypermethylation as a gastric cancer prognostic marker, alongside summary-data Mendelian randomisation."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.75,
+        "reason": "Cox/SMR analysis of cg16007185 methylation and gastric cancer prognosis draws on GWAS, mQTL, and eQTL summary statistics from TCGA/GTEx/GEO."
+      }
+    },
+    {
+      "record_id": "egm-001503",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "Prognostic analysis of individual-level TCGA glioma patients with local tissue validation, linking DNA methylation and IDH1 status to ELK3 expression and survival."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "DNA methylation status of IDH1 is mentioned as linked to ELK3 expression but the abstract does not clarify whether it was measured on individual samples or drawn from aggregate database correlations."
+      }
+    },
+    {
+      "record_id": "egm-001508",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "PsyCourse cohort of 443 patients with severe mental disorders in which DNA methylation was measured and compared between severity-based clusters used for risk stratification."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "DNA methylation was among variables compared between symptom-severity clusters but the abstract does not report whether it differed or how it links to a decision."
+      }
+    },
+    {
+      "record_id": "egm-001513",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "Secondary analysis of individual-level TCGA hepatocellular carcinoma patients including DNA methylation analysis, with a signature evaluated for prognosis and therapy response."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "DNA methylation analysis is listed among methods on TCGA HCC data but the results only report the transcriptomic bile-acid signature, leaving the methylation-prognosis link unclear."
+      }
+    },
+    {
+      "record_id": "egm-001520",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.6,
+        "reason": "Cohort of 64 blast-phase MPN patients in which chromatin accessibility was compared between chr.21amp cases and non-amplified controls and linked to prognosis and a therapeutic target."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Chromatin accessibility differences were measured in patient samples but appear incidental to a genetic-amplification finding, leaving the epigenetic-marker link to prognosis unclear."
+      }
+    },
+    {
+      "record_id": "egm-001538",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Epigenetic clocks are invoked for biological age acceleration but the methods never state what was measured in the 241,125 UK Biobank participants, so whether DNA methylation was assayed cannot be decided."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.85,
+        "reason": "Epigenetic clocks (DNA methylation-based Biological Age Acceleration) were measured in UK Biobank and linked to modifiable lifestyle factors including sleep, activity and sedentary behavior."
+      }
+    },
+    {
+      "record_id": "egm-001564",
+      "claude-opus-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.85,
+        "reason": "Two prospective cohorts using clinical-biomarker-based biological age; no DNA methylation, histone or chromatin measurement is reported."
+      },
+      "claude-sonnet-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "The method used to compute the chronological age-adjusted biological age is not specified, so it is unclear whether an epigenetic DNA methylation marker was measured."
+      }
+    },
+    {
+      "record_id": "egm-001573",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.55,
+        "reason": "Diagnostic comparison series of twelve PATZ1-fused CNS tumours against extra-CNS sarcomas with DNA-methylation profiling in human tissue and reported diagnostic specificity for GATA2."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "not_primary",
+        "confidence": 0.55,
+        "reason": "Descriptive case series of twelve CNS PATZ1-fused tumors characterizing a newly recognized tumor entity, without a designed comparison cohort."
+      }
+    },
+    {
+      "record_id": "egm-001618",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.65,
+        "reason": "Case-control comparison of directly measured chromatin accessibility (ATAC-seq) in Treg cells from acute urticaria patients versus healthy controls, framed as diagnostic and prognostic biomarker discovery."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.55,
+        "reason": "ATAC-seq chromatin accessibility was compared between Treg cells from urticaria patients and controls, but the analysis is mechanistic and not tied to a stated exposure or clinical decision."
+      }
+    },
+    {
+      "record_id": "egm-001624",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "DNA methylation of lncRNA genes was measured in human breast tumour samples, but the abstract states no analytic design and no clear comparison group or clinical decision link."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.55,
+        "reason": "DNA co-methylation among lncRNA genes was measured in breast tumor samples, but the study characterizes a regulatory network without linking it to an exposure or clinical decision."
+      }
+    },
+    {
+      "record_id": "egm-001647",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "THBD hypermethylation is reported only from web-based portal analyses, and the abstract does not make clear whether individual-level data or only database-level aggregates were analysed."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_approach_link",
+        "confidence": 0.55,
+        "reason": "THBD promoter hypermethylation was measured in UCEC tissue via public databases, but it showed no significant survival association and no exposure link was tested."
+      }
+    },
+    {
+      "record_id": "egm-001704",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Bioinformatic driver-gene framework applied to TCGA methylation and expression data with no analytic study design stated for the patient cohorts."
+      },
+      "claude-sonnet-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "The Moonlight2 framework applies individual-level TCGA DNA methylation data to identify driver genes with prognostic (survival) significance in three cancer subtypes."
+      }
+    },
+    {
+      "record_id": "egm-001728",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "The human case-control analysed only genotype, and the abstract does not say in what material the cis-regulatory and ChIP-seq chromatin work was performed."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.55,
+        "reason": "The human case-control arm genotypes an enhancer SNP (rs10223516); the ChIP-seq/RNA-seq evidence for FOXP4 regulation was generated in cell-line functional assays, not measured as a marker in the patient cohort."
+      }
+    },
+    {
+      "record_id": "egm-001737",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.45,
+        "reason": "A DNA methylation microarray was run on patient tumours but only copy number outputs were compared, leaving it unclear whether a methylation marker itself was linked to the diagnostic decision."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.55,
+        "reason": "DNA methylation microarray data are used only to infer chromosomal copy-number variation in this assay-comparison study; no methylation status itself is analyzed or reported."
+      }
+    },
+    {
+      "record_id": "egm-001740",
+      "claude-opus-5": {
+        "decision": "include",
+        "criterion": null,
+        "confidence": 0.75,
+        "reason": "Urinary cell-free DNA from healthy, pregnant, chronic kidney disease and bladder cancer participants was sequenced, with hypomethylation signals used for cancer detection."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.55,
+        "reason": "Urinary cell-free DNA fragments are overlapped with pre-existing reference open-chromatin/heterochromatin annotations rather than directly assaying chromatin state in the study participants."
+      }
+    },
+    {
+      "record_id": "egm-001742",
+      "claude-opus-5": {
+        "decision": "unclear",
+        "criterion": null,
+        "confidence": 0.5,
+        "reason": "Retrospective tumour series correlated B7-H3 expression with epigenetic subclass, but the abstract does not state whether DNA methylation was measured in this study."
+      },
+      "claude-sonnet-5": {
+        "decision": "exclude",
+        "criterion": "no_measured_marker",
+        "confidence": 0.75,
+        "reason": "The study measures B7-H3 mRNA and protein expression by IHC; existing epigenetic subclass labels are used only as a covariate, not measured here."
+      }
+    }
+  ]
+}
