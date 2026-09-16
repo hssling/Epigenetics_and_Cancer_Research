@@ -19,9 +19,32 @@ from pipeline.screen_schema import (
 
 # Confidence below this is the "low" stratum, and so on. Boundaries are
 # recorded here so the stratification is reproducible from the code.
+# Confidence strata for the recall validation sample, as UPPER bounds (strict).
+#
+# Reset 2026-09-17 from (0.5, 0.8, 1.01) after inspecting the real exclusion
+# confidence distribution, which is what the design spec directs: "strata
+# boundaries set after inspecting the confidence distribution, recorded before
+# drawing". The original values were written before any screening existed and
+# assumed a lower-confidence screener than the one that ran.
+#
+# Under the old boundaries only 16 of 3,767 AI exclusions fell in `low`, against
+# the 500 the registered allocation draws from it. `stratified_sample` refused
+# to draw rather than silently returning 16 — which is the behaviour that
+# surfaced this at all.
+#
+# These values are chosen so the SAMPLING FRACTION falls monotonically as
+# confidence rises, which is the whole point of the stratification: the
+# error-prone tail is over-sampled. With the registered 500/300/200 allocation
+# they give N = 790 / 1,369 / 1,608 and fractions 63% / 22% / 12%. Every other
+# candidate inspected inverted that ordering, sampling high-confidence
+# exclusions more heavily than mid — which would have defeated the design.
+#
+# Chosen BEFORE the sample was drawn, before any human screening, and before
+# any recall figure existed, so they cannot have been tuned toward a
+# favourable answer. See protocol/amendments.md, Amendment 5.
 STRATUM_BOUNDARIES: tuple[tuple[str, float], ...] = (
-    ("low", 0.5),
-    ("mid", 0.8),
+    ("low", 0.66),
+    ("mid", 0.81),
     ("high", 1.01),
 )
 

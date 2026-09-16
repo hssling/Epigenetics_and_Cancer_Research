@@ -13,6 +13,7 @@ That ordering is the point of this file, not a courtesy.
 | 2 | 2026-09-14 | 4.4 Deduplication | Publication-year match relaxed to ±2 years, and the DOI-conflict guard disapplied, **for preprint pairs only** | A preprint and its published version necessarily differ in year and always differ in DOI. The registered rule double-counted 136 studies. See Amendment 2. |
 | 3 | 2026-09-14 | 5 Screening, Stage 0 | Screening instrument refined `screening_v1.md` → `screening_v2.md` after calibration round 1 | Registered Stage 0 behaviour ("eligibility criteria and AI prompt refined"). Round 1 exposed an unreachable criterion and a missing one. See Amendment 3. |
 | 4 | 2026-09-14 | 5 Screening, Stage 0 | Instrument refined `screening_v2.md` → `screening_v3.md` after calibration round 2 | Round 2 exposed two defects introduced by v2's own wording. See Amendment 4. |
+| 5 | 2026-09-17 | 5 Screening, Stage 2 | Recall-validation confidence strata reset from (<0.5, <0.8) to (<0.66, <0.81) | The registered boundaries left only 16 of 3,767 exclusions in the stratum the design draws 500 from. See Amendment 5. |
 
 ---
 
@@ -261,3 +262,79 @@ the decisions from both are superseded.
   meta-analysis extraction. The registered contingency — narrowing to the
   exposure arm (4,029 records) — is an investigator decision and has not
   been taken.
+
+---
+
+## Amendment 5 (enacted 2026-09-17): recall-validation strata boundaries
+
+### This is directed by the design, not a departure from it
+
+The design spec (`docs/superpowers/specs/2026-09-13-egm-screening-design.md`,
+Section 8 risk table) states that the strata boundaries are "set after
+inspecting the confidence distribution, recorded before drawing". They could
+not have been fixed in advance: nobody knew how confident the screener would
+be until it had screened something. This entry is that record.
+
+### What the registered boundaries assumed, and what actually happened
+
+The placeholder boundaries were `low < 0.5`, `mid < 0.8`, `high` otherwise,
+written before any screening existed. Against the completed run they give:
+
+| stratum | registered boundary | N of 3,767 exclusions |
+|---|---|---:|
+| low | < 0.5 | **16** |
+| mid | 0.5–0.8 | 1,695 |
+| high | ≥ 0.8 | 2,056 |
+
+The registered allocation draws **500** records from `low`. There are 16.
+
+`stratified_sample` refused to draw, raising `stratum 'low': requested 500,
+only 16 available`. That refusal is why this was noticed at all — a function
+that silently returned 16 would have produced a 516-record "1,000-record
+validation sample" and a recall estimate computed on a denominator nobody
+checked.
+
+### The new boundaries and why these
+
+`low < 0.66`, `mid < 0.81`, `high` otherwise, giving N = 790 / 1,369 / 1,608.
+
+The binding constraint is not that the draw succeeds — several candidate
+boundaries allow that. It is that the **sampling fraction must fall
+monotonically as confidence rises**, because over-sampling the error-prone
+tail is the entire purpose of stratifying. With the registered 500/300/200
+allocation:
+
+| boundaries | N (low/mid/high) | sampling fraction | monotonic? |
+|---|---|---|---|
+| < 0.5 / < 0.8 | 16 / 1,695 / 2,056 | — | not drawable |
+| **< 0.66 / < 0.81** | **790 / 1,369 / 1,608** | **63% / 22% / 12%** | **yes** |
+| < 0.66 / < 0.86 | 790 / 2,291 / 686 | 63% / 13% / 29% | no |
+| < 0.71 / < 0.86 | 1,153 / 1,928 / 686 | 43% / 16% / 29% | no |
+
+The two rejected candidates would have sampled *high*-confidence exclusions
+more heavily than mid — inverting the design. Only one candidate preserved it.
+
+### Why this is not strata-shopping
+
+Adjusting strata after seeing data is normally a serious red flag, so the
+ordering matters and is stated plainly:
+
+1. The boundaries were chosen from the confidence distribution alone.
+2. They were fixed **before** the sample was drawn.
+3. No human screening has occurred, so no false negative has been observed.
+4. **No recall figure exists, or can exist, yet.** There is nothing to tune
+   toward.
+
+The criterion applied was structural — preserve monotonic over-sampling — not
+outcome-based. Anyone may recompute the table above from
+`screening/screening_decisions_sonnet.jsonl` and check that only one candidate
+satisfies it.
+
+### Effect
+
+`screening/validation_1000.json` drawn: 1,000 AI-excluded records, 500 low /
+300 mid / 200 high, seed 20260913, reproducible from the published seed.
+
+The stratum-weighted recall estimate uses these population sizes, so the
+weights change with them. Both the unweighted and the weighted estimate are
+reported, as Section 8 requires.
