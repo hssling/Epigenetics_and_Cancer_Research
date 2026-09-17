@@ -60,6 +60,16 @@ thousand finished decisions exert real pressure to accept them rather than
 re-screen if the kappa comes out low. The gate exists so that pressure has
 nowhere to act.
 
+The gate has since been attacked deliberately, and hardened against what
+landed: it recomputes kappa from the confusion matrix rather than trusting the
+`gate_met` flag, verifies the decision logs still hash to what the agreement
+report recorded, and refuses a "human" log whose timestamps show it was
+written in one pass. What remains open is stated in METHODS Section 6.3 — a
+sufficiently determined fabrication of the investigator's screening log cannot
+be detected by anything running on the same filesystem. That is a limit of the
+design, not an oversight in it, and the manuscript says so rather than letting
+the machinery imply otherwise.
+
 Until the gate passes, the following may not be stated anywhere:
 
 - how many studies are eligible;

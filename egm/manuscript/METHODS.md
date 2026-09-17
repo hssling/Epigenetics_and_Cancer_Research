@@ -234,6 +234,28 @@ is outstanding.
 No substitute exists. `agreement.compare` requires one human log and one AI log
 and refuses an AI-versus-AI comparison, so a second model run cannot stand in.
 
+**What the repository verifies, and what it does not.** The analysis code
+enforces a good deal about the human log: that it was produced by a human
+screener, that it covers exactly the registered sample, that the agreement
+report is internally consistent with its own confusion matrix, and that the
+decision logs it was computed from are unchanged since. An adversarial audit
+of these checks also established their limit. A file that claims to be the
+investigator's screening can be constructed — the AI log relabelled, with a
+fraction of decisions flipped — and it satisfies every structural check,
+because its structure is correct. A timing check now refuses a log whose
+timestamps show it was written in one pass rather than over a screening
+session, which raises the cost of that construction; it does not eliminate it,
+and no check that runs on the same filesystem as the file it inspects could.
+
+The authenticity of the calibration and validation screening therefore rests on
+the investigator's attestation, as it does in any review where one person
+screens. It is stated here rather than left implied, because the surrounding
+machinery is unusually explicit about what it checks and could otherwise be
+read as certifying more than it does. The verifiable claims are narrower and
+worth stating exactly: the corpus, the instrument and its hash, every AI
+decision with its model and confidence, and the fact that the reported counts
+were produced by code that refuses to emit them without a passing gate.
+
 If the gate is not met after revision, the registered contingency applies:
 narrowing to the exposure arm (4,029 records) as a recorded amendment.
 

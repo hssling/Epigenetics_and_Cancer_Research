@@ -512,21 +512,63 @@ def test_templated_reasons_are_refused(tmp_path):
     _write_decisions(decisions_path, rows)
     log = tmp_path / "log.jsonl"
 
-    with pytest.raises(collect_batches.CollectionError, match="distinct reasons"):
+    with pytest.raises(collect_batches.CollectionError, match="distinct reason templates"):
         collect_batches.collect(batch, decisions_path, log, MODEL)
 
     assert not log.exists(), "a rejected batch must write nothing"
 
 
+# Fragments that vary in what they SAY, not merely in an interpolated number.
+# The earlier fixture here used f"Record-specific finding number {i}." and was
+# treated as genuine; under the template rule it is the interpolation attack,
+# which is what an audit used to defeat this guard. On the real 9,786-decision
+# log the template ratio is 1.000, so nothing genuine is near the floor.
+_SUBJECTS = ("cord blood", "saliva", "buccal swab", "whole blood", "placenta",
+             "peripheral leukocytes", "tumour tissue", "dried blood spot")
+_ASSAYS = ("EPIC array", "pyrosequencing", "RRBS", "targeted bisulfite PCR",
+           "450K array", "nanopore sequencing", "MeDIP-seq", "WGBS")
+_CONTEXTS = ("prenatal exposure cohort", "occupational surveillance",
+             "school-based screening", "clinical trial arm", "registry linkage",
+             "case-control design", "birth cohort follow-up", "pilot programme")
+
+
+def _varied_reasons(n):
+    return [
+        f"{_ASSAYS[i % len(_ASSAYS)]} methylation in "
+        f"{_SUBJECTS[(i // 3) % len(_SUBJECTS)]}, "
+        f"{_CONTEXTS[(i // 7) % len(_CONTEXTS)]}."
+        for i in range(n)
+    ]
+
+
 def test_genuine_per_record_reasons_pass(tmp_path):
     batch, decisions_path = _pair(tmp_path, 1, n=40)
     rows = _all(batch)
-    for i, row in enumerate(rows):
-        row["reason"] = f"Record-specific finding number {i}."
+    for row, reason in zip(rows, _varied_reasons(len(rows))):
+        row["reason"] = reason
     _write_decisions(decisions_path, rows)
     log = tmp_path / "log.jsonl"
 
     assert collect_batches.collect(batch, decisions_path, log, MODEL)["collected"] == 40
+
+
+def test_a_fixed_reason_with_the_record_id_interpolated_is_refused(tmp_path):
+    """The audit's one-line defeat of the raw distinct-string ratio.
+
+    Every reason is unique as a string, so the old check scored 1.00 and passed
+    a batch in which the judgement never varied at all.
+    """
+    batch, decisions_path = _pair(tmp_path, 1, n=40)
+    rows = _all(batch)
+    for row in rows:
+        row["reason"] = f"No epigenetic marker measured ({row['record_id']})."
+    _write_decisions(decisions_path, rows)
+    log = tmp_path / "log.jsonl"
+
+    with pytest.raises(collect_batches.CollectionError, match="interpolated identifiers"):
+        collect_batches.collect(batch, decisions_path, log, MODEL)
+
+    assert not log.exists(), "a rejected batch must write nothing"
 
 
 def test_a_small_batch_is_not_judged_on_reason_variety(tmp_path):

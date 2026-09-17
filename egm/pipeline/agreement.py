@@ -9,6 +9,7 @@ import json
 import math
 import pathlib
 from collections import Counter
+from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -108,6 +109,83 @@ def _latest(decisions: list[ScreeningDecision]) -> dict[str, ScreeningDecision]:
     return latest
 
 
+# A human reading a title and abstract and reaching a judgement cannot do it
+# in under a few seconds, even skimming. The registered estimate for the
+# 300-record calibration sample is 1.5-2.5 hours; this floor allows 15 minutes.
+# It is set far below anything realistic on purpose -- it is here to catch a
+# log that was written by a program, not to police how fast the investigator
+# reads.
+MIN_SECONDS_PER_DECISION = 3.0
+
+# Below this many records, timing says nothing: a short log can legitimately
+# be written quickly, and test fixtures are small by nature.
+MIN_DECISIONS_FOR_TIMING = 20
+
+
+def _parse_time(stamp: str) -> Optional[datetime]:
+    try:
+        return datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return None
+
+
+def assert_human_log_is_plausibly_human(
+    human: dict[str, ScreeningDecision]
+) -> None:
+    """Refuse a "human" log that was plainly not produced by a person screening.
+
+    THIS IS A COST-RAISER, NOT A PROOF. Nothing in a local filesystem can
+    establish that a person did the work. An audit demonstrated the attack it
+    is aimed at: take the AI decision log, set `screener` to "human", strip
+    `model_id` and `prompt_sha256`, flip 8% of the labels, and the gate opens
+    at kappa 0.838. Every other check in this module passes, because every
+    other check is about the log's shape and the shape is correct.
+
+    What a real screening session leaves behind is time. `screen_app` stamps
+    each decision as it is made, so 300 genuine judgements are spread over
+    hours and carry hundreds of distinct timestamps. A transcribed log carries
+    one timestamp, or a few, or an impossible number of decisions per minute.
+
+    A forger who reads this docstring can fabricate timestamps. That is the
+    honest limit: this raises the attack from a one-line `sed` to a deliberate
+    fabrication of a screening session. The authenticity of the human log
+    ultimately rests on the investigator's attestation, and the manuscript says
+    so rather than implying that the repository verifies it.
+    """
+    if len(human) < MIN_DECISIONS_FOR_TIMING:
+        return
+
+    stamps = [_parse_time(d.decided_at) for d in human.values()]
+    parsed = [s for s in stamps if s is not None]
+    if len(parsed) < len(stamps):
+        raise ValueError(
+            f"{len(stamps) - len(parsed)} decision(s) in the --human log have "
+            "an unparseable decided_at; a log written by screen_app never does"
+        )
+
+    distinct = len(set(parsed))
+    if distinct == 1:
+        raise ValueError(
+            f"all {len(human)} decisions in the --human log carry the same "
+            "timestamp. A person screening records reaches them one at a time; "
+            "a single timestamp means the log was written in one go, by a "
+            "program. If this is a legitimately regenerated log, regenerate it "
+            "through screen_app so it records when each judgement was made."
+        )
+
+    span = (max(parsed) - min(parsed)).total_seconds()
+    floor = (len(human) - 1) * MIN_SECONDS_PER_DECISION
+    if span < floor:
+        raise ValueError(
+            f"the --human log records {len(human)} decisions across "
+            f"{span:.0f} seconds ({span / max(len(human), 1):.1f}s each). "
+            f"Reading a title and abstract and judging it takes longer than "
+            f"{MIN_SECONDS_PER_DECISION:.0f}s, so this log was not produced by "
+            "a person screening records. The Stage 0 gate is kappa against the "
+            "investigator; a transcribed or generated log measures nothing."
+        )
+
+
 def compare(
     human_path: pathlib.Path,
     ai_path: pathlib.Path,
@@ -150,6 +228,10 @@ def compare(
             f"{bad_ai[:5]}; comparing a log against itself (or with "
             "--human/--ai swapped) would silently pass the gate"
         )
+
+    # The gate is kappa against the investigator. Everything above checks the
+    # log's shape; this checks that a person plausibly produced it.
+    assert_human_log_is_plausibly_human(human)
 
     if sample_path is None:
         only_human = sorted(set(human) - set(ai))

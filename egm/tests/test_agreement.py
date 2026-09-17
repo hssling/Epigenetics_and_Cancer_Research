@@ -92,15 +92,27 @@ def test_empty_input_raises():
 # --- compare() over decision logs ------------------------------------------
 
 
+# A real screening session records when each judgement was made, minutes
+# apart. `agreement.compare` refuses a "human" log whose timestamps show it
+# was written in one pass, so these fixtures spread them the way screen_app
+# would rather than sharing one stamp.
+def _human_time(n: int) -> str:
+    minute, second = divmod(n * 37, 60)
+    hour, minute = divmod(minute, 60)
+    return f"2026-09-13T{10 + hour:02d}:{minute:02d}:{second:02d}Z"
+
+
 def _write(path, pairs, screener):
-    for record_id, decision, criterion in pairs:
+    for n, (record_id, decision, criterion) in enumerate(pairs):
         append_decision(path, ScreeningDecision(
             record_id=record_id, pmid=record_id.split("-")[1], decision=decision,
             criterion=criterion, confidence=0.9 if screener == "ai" else None,
             reason="r" if screener == "ai" else None, screener=screener,
             model_id="claude-opus-5" if screener == "ai" else None,
             prompt_sha256="a" * 64 if screener == "ai" else None,
-            stage="calibration", decided_at="2026-09-13T10:00:00Z", supersedes=None,
+            stage="calibration",
+            decided_at="2026-09-13T10:00:00Z" if screener == "ai" else _human_time(n),
+            supersedes=None,
         ))
 
 
@@ -300,3 +312,79 @@ def test_an_empty_sample_is_refused(tmp_path):
 
     with pytest.raises(ValueError, match="no records to compare"):
         compare(human_p, ai_p, sample_path=_sample(tmp_path, []))
+
+
+# --- attack 3: a "human" log transcribed from the AI log ---------------------
+
+
+def _relabelled_ai_log(path, pairs, flip_every=12):
+    """The audit's attack: the AI log, relabelled and partly flipped.
+
+    screener becomes "human", model_id and prompt_sha256 are stripped, and
+    every Nth label is flipped so the kappa lands in a believable range
+    instead of at 1.0. Every structural check in `compare` passes: the fields
+    are right, the records align, the screener strings are what they should
+    be. Only the timestamps give it away, because the whole file was written
+    in one pass.
+    """
+    for n, (record_id, decision, criterion) in enumerate(pairs):
+        if n % flip_every == 0:
+            decision = "exclude" if decision == "include" else "include"
+            criterion = "not_primary" if decision == "exclude" else None
+        append_decision(path, ScreeningDecision(
+            record_id=record_id, pmid=record_id.split("-")[1], decision=decision,
+            criterion=criterion, confidence=None, reason=None, screener="human",
+            model_id=None, prompt_sha256=None, stage="calibration",
+            decided_at="2026-09-13T10:00:00Z", supersedes=None,
+        ))
+
+
+def test_a_human_log_written_in_one_pass_is_refused(tmp_path):
+    """This attack landed: kappa 0.838, gate met, every other check passing."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "include" if n < 40 else "exclude",
+              None if n < 40 else "not_primary") for n in range(100)]
+    _relabelled_ai_log(human_p, pairs)
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="same timestamp"):
+        compare(human_p, ai_p)
+
+
+def test_a_human_log_screened_impossibly_fast_is_refused(tmp_path):
+    """Timestamps that vary but imply a second per abstract."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "exclude", "not_primary") for n in range(100)]
+    for n, (record_id, decision, criterion) in enumerate(pairs):
+        append_decision(human_p, ScreeningDecision(
+            record_id=record_id, pmid=str(n), decision=decision,
+            criterion=criterion, confidence=None, reason=None, screener="human",
+            model_id=None, prompt_sha256=None, stage="calibration",
+            decided_at=f"2026-09-13T10:{n // 60:02d}:{n % 60:02d}Z",
+            supersedes=None,
+        ))
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="1.0s each"):
+        compare(human_p, ai_p)
+
+
+def test_a_realistically_paced_human_log_is_accepted(tmp_path):
+    """The check must not make real screening impossible to report."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "include" if n < 40 else "exclude",
+              None if n < 40 else "not_primary") for n in range(100)]
+    _write(human_p, pairs, "human")
+    _write(ai_p, pairs, "ai")
+
+    assert compare(human_p, ai_p).n == 100
+
+
+def test_timing_is_not_applied_to_a_log_too_short_to_judge(tmp_path):
+    """Under 20 decisions, pace says nothing; the check stays silent."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "exclude", "not_primary") for n in range(10)]
+    _relabelled_ai_log(human_p, pairs, flip_every=1000)
+    _write(ai_p, pairs, "ai")
+
+    assert compare(human_p, ai_p).n == 10

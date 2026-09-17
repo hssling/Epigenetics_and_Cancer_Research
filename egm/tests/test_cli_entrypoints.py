@@ -7,6 +7,16 @@ from pipeline import report_agreement, report_recall, run_screening
 from pipeline.screen_schema import ScreeningDecision, append_decision
 
 
+# A real screening session records when each judgement was made, minutes
+# apart. `agreement.compare` refuses a "human" log whose timestamps show it
+# was written in one pass, so these fixtures spread them the way screen_app
+# would rather than sharing one stamp.
+def _human_time(n: int) -> str:
+    minute, second = divmod(n * 37, 60)
+    hour, minute = divmod(minute, 60)
+    return f"2026-09-13T{10 + hour:02d}:{minute:02d}:{second:02d}Z"
+
+
 def _ai(path, record_id, decision, confidence, criterion=None):
     append_decision(path, ScreeningDecision(
         record_id=record_id, pmid=record_id.split("-")[1], decision=decision,
@@ -16,12 +26,13 @@ def _ai(path, record_id, decision, confidence, criterion=None):
     ))
 
 
-def _human(path, record_id, decision, criterion=None, stage="validation"):
+def _human(path, record_id, decision, criterion=None, stage="validation", n=None):
     append_decision(path, ScreeningDecision(
         record_id=record_id, pmid=record_id.split("-")[1], decision=decision,
         criterion=criterion, confidence=None, reason=None, screener="human",
         model_id=None, prompt_sha256=None, stage=stage,
-        decided_at="2026-09-13T10:00:00Z", supersedes=None,
+        decided_at=_human_time(int(record_id.split("-")[1]) if n is None else n),
+        supersedes=None,
     ))
 
 
