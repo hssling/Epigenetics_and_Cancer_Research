@@ -17,6 +17,7 @@ import pathlib
 from typing import Optional
 
 from pipeline.report_screening import GateNotPassed, screening_stage
+from pipeline.screen_schema import read_decisions
 
 
 def _read_flow(path: pathlib.Path) -> list[dict[str, str]]:
@@ -64,10 +65,29 @@ def _screening_block(
     try:
         _, summary = screening_stage(decisions_path, agreement_path, identified)
     except GateNotPassed as exc:
+        # Do not assert coverage that has not been checked. An audit found
+        # this block claiming "every one has a recorded decision" for a record
+        # count read from a stale CSV, against a log covering a different set.
+        decided = len({
+            d.record_id for d in read_decisions(decisions_path)
+            if d.stage == "screening"
+        })
+        if decided == identified:
+            coverage = (
+                f"{identified:,} records entered title/abstract screening. "
+                "Every one has a recorded decision."
+            )
+        else:
+            coverage = (
+                f"{identified:,} records entered title/abstract screening; the "
+                f"decision log covers {decided:,} of them. **These do not "
+                "match** — the counts below would be wrong even if the gate "
+                "were open, and the discrepancy must be resolved before either "
+                "number is used."
+            )
         return (
             "### Screening — counts WITHHELD\n\n"
-            f"{identified:,} records entered title/abstract screening. Every one "
-            "has a recorded decision.\n\n"
+            f"{coverage}\n\n"
             "**The counts are not shown here, and that is deliberate.** The "
             "registered Stage 0 gate (protocol Section 5) is Cohen's kappa >= 0.75 "
             "between the investigator and the model, and it has not been passed:\n\n"

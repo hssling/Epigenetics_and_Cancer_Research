@@ -50,22 +50,49 @@ def test_the_document_says_why_it_is_withholding(tmp_path):
 
 def test_merge_note_is_derived_not_asserted(tmp_path):
     """An earlier hand-written draft said '192 cross-source merges'. 192 is the
-    number of records removed; only 184 groups were cross-source."""
+    number of records REMOVED; only 184 of the 190 groups were cross-source.
+
+    The fixture deliberately uses a group of THREE records. With only two-record
+    groups, `sum(len - 1)` and `len(groups)` coincide, and the exact off-by-one
+    this test exists to catch is invisible — an audit found the first version of
+    this test passing against that bug. Here 4 records are removed across 3
+    groups, so the two quantities cannot be confused.
+    """
     corpus = tmp_path / "corpus.json"
     corpus.write_text(json.dumps({"manifest": {}, "records": [
-        {"record_id": "a", "merged_from": ["pubmed:1", "europepmc:PPR:1"]},
-        {"record_id": "b", "merged_from": ["europepmc:PMC:1", "europepmc:PMC:2"]},
-        {"record_id": "c", "merged_from": ["pubmed:2"]},
+        # three records merged into one: contributes 2 removals, 1 group
+        {"record_id": "a", "merged_from": ["pubmed:1", "europepmc:PPR:1", "europepmc:PPR:2"]},
+        {"record_id": "b", "merged_from": ["pubmed:2", "europepmc:PMC:9"]},
+        {"record_id": "c", "merged_from": ["europepmc:PMC:1", "europepmc:PMC:2"]},
+        {"record_id": "d", "merged_from": ["pubmed:3"]},
     ]}), encoding="utf-8")
 
     note = render_prisma._merge_note(corpus)
 
-    assert "2 records were removed across 2 merge groups" in note
-    assert "1 joined records from different databases" in note
-    assert "1 were within a single database" in note
+    assert "4 records were removed across 3 merge groups" in note, note
+    assert "2 joined records from different databases" in note, note
+    assert "1 were within a single database" in note, note
 
 
 def test_merge_note_degrades_without_the_corpus(tmp_path):
     note = render_prisma._merge_note(None)
     assert "merged_from" in note
     assert "records were removed" not in note
+
+
+def test_gate_closed_block_does_not_claim_unverified_coverage(tmp_path):
+    """An audit found the withheld block asserting "Every one has a recorded
+    decision" for a record count taken from a stale CSV, against a decision log
+    that covered a different number. The claim is now checked."""
+    ident = tmp_path / "counts.csv"
+    ident.write_text(CSV, encoding="utf-8")
+    decisions = tmp_path / "decisions.jsonl"
+    decisions.write_text("", encoding="utf-8")   # no decisions at all
+    out = tmp_path / "flow.md"
+
+    render_prisma.render(ident, decisions, tmp_path / "absent.json", out)
+    text = out.read_text(encoding="utf-8")
+
+    assert "Every one has a recorded decision" not in text
+    assert "decision log covers 0 of them" in text
+    assert "do not match" in text

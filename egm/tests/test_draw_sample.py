@@ -3,7 +3,12 @@ import json
 
 import pytest
 
-from pipeline.draw_sample import draw_calibration, draw_validation, stratum_sizes
+from pipeline.draw_sample import (
+    draw_calibration,
+    draw_validation,
+    screened_text,
+    stratum_sizes,
+)
 from pipeline.screen_schema import ScreeningDecision, append_decision
 
 
@@ -14,6 +19,30 @@ def _corpus(tmp_path, n=1000):
          "abstract": f"A{i}", "year": 2020, "journal": "J"} for i in range(n)
     ]}), encoding="utf-8")
     return path
+
+
+def _batches(tmp_path, corpus_path, dirname="batches"):
+    """Write the batch files the screener would have been given.
+
+    The batch set is the only artefact that records the text the model was
+    shown, so the validation draw is checked against it rather than against
+    the corpus, which is rewritten by later pipeline steps.
+    """
+    records = json.loads(corpus_path.read_text(encoding="utf-8"))["records"]
+    out = tmp_path / dirname
+    out.mkdir()
+    for number, start in enumerate(range(0, len(records), 500), start=1):
+        (out / f"batch_{number:04d}.json").write_text(json.dumps({
+            "batch_id": f"batch_{number:04d}",
+            "stage": "screening",
+            "prompt_sha256": "a" * 64,
+            "records": [
+                {k: r[k] for k in
+                 ("record_id", "pmid", "title", "abstract", "year", "journal")}
+                for r in records[start:start + 500]
+            ],
+        }), encoding="utf-8")
+    return out
 
 
 def test_calibration_draw_is_the_registered_size(tmp_path):
@@ -77,7 +106,8 @@ def test_validation_draw_oversamples_low_confidence(tmp_path):
 
     out = tmp_path / "val.json"
     counts = draw_validation(
-        corpus, decisions, out, {"low": 50, "mid": 0, "high": 50}, seed=20260913
+        corpus, decisions, out, {"low": 50, "mid": 0, "high": 50}, seed=20260913,
+        batches_dir=_batches(tmp_path, corpus),
     )
 
     assert counts["drawn"] == 100
@@ -92,5 +122,75 @@ def test_validation_draw_raises_when_a_stratum_is_too_small(tmp_path):
 
     with pytest.raises(ValueError, match="only 5 available"):
         draw_validation(
-            corpus, decisions, tmp_path / "v.json", {"low": 50}, seed=1
+            corpus, decisions, tmp_path / "v.json", {"low": 50}, seed=1,
+            batches_dir=_batches(tmp_path, corpus),
         )
+
+
+# --- the corpus is a live artefact; the batch files are not ------------------
+
+
+def test_a_corpus_edited_since_screening_refuses_the_draw(tmp_path):
+    """The attack an audit landed: redraw after `backfill_abstracts` ran.
+
+    The seed is deterministic and record_ids are stable, so the same ids come
+    back and the sample looks correct. 82 of them carried an abstract the
+    model had never seen. The investigator screens one text, the AI screened
+    another, and every resulting disagreement is scored as a recall failure
+    against the AI.
+    """
+    corpus, decisions = _corpus(tmp_path), tmp_path / "d.jsonl"
+    for i in range(100):
+        _ai_exclusion(decisions, f"egm-{i:06d}", 0.2)
+    batches = _batches(tmp_path, corpus)
+
+    # backfill: the corpus gains abstracts the screener never saw
+    payload = json.loads(corpus.read_text(encoding="utf-8"))
+    for record in payload["records"][:60]:
+        record["abstract"] = "a newly backfilled abstract"
+    corpus.write_text(json.dumps(payload), encoding="utf-8")
+
+    out = tmp_path / "val.json"
+    with pytest.raises(ValueError, match="differs from the text the screener"):
+        draw_validation(
+            corpus, decisions, out, {"low": 50}, seed=20260913,
+            batches_dir=batches,
+        )
+    assert not out.exists(), "a refused draw must not leave a sample on disk"
+
+
+def test_an_unchanged_corpus_draws_normally(tmp_path):
+    """The check must not make a legitimate draw impossible."""
+    corpus, decisions = _corpus(tmp_path), tmp_path / "d.jsonl"
+    for i in range(100):
+        _ai_exclusion(decisions, f"egm-{i:06d}", 0.2)
+
+    counts = draw_validation(
+        corpus, decisions, tmp_path / "val.json", {"low": 50}, seed=20260913,
+        batches_dir=_batches(tmp_path, corpus),
+    )
+    assert counts["drawn"] == 50
+
+
+def test_a_record_that_was_never_batched_refuses_the_draw(tmp_path):
+    corpus, decisions = _corpus(tmp_path), tmp_path / "d.jsonl"
+    for i in range(100):
+        _ai_exclusion(decisions, f"egm-{i:06d}", 0.2)
+    batches = _batches(tmp_path, corpus)
+    for path in batches.glob("batch_*.json"):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["records"] = payload["records"][20:]
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="never in a batch file"):
+        draw_validation(
+            corpus, decisions, tmp_path / "val.json", {"low": 50}, seed=20260913,
+            batches_dir=batches,
+        )
+
+
+def test_screened_text_refuses_a_directory_with_no_batches(tmp_path):
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    with pytest.raises(ValueError, match="no batch files"):
+        screened_text(empty)

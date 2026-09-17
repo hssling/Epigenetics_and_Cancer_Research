@@ -16,19 +16,75 @@ from pipeline.report_screening import (
     load_agreement,
     screening_stage,
 )
-from pipeline.agreement import AgreementReport
+from pipeline.agreement import AgreementReport, file_sha256
 from pipeline.screen_schema import ScreeningDecision, append_decision
 
 PROMPT = "a" * 64
 
 
-def _agreement(tmp_path, kappa=0.82, gate_met=True, n=300):
+def _consistent_confusion(n: int, agree: int) -> dict[str, int]:
+    """A confusion matrix that really does describe `agree` of `n` agreeing.
+
+    Both raters must use both labels. A matrix where one rater says "include"
+    throughout is degenerate: chance agreement equals observed agreement and
+    kappa collapses to 0 however high the raw agreement looks. An earlier
+    version of this helper did exactly that and made every gate-passing test
+    fail for a reason that had nothing to do with the gate.
+    """
+    disagree = n - agree
+    a = agree // 2
+    c = disagree // 2
+    return {
+        "include->include": a,
+        "exclude->exclude": agree - a,
+        "include->exclude": c,
+        "exclude->include": disagree - c,
+    }
+
+
+def _kappa_of(confusion: dict[str, int]) -> tuple[int, float, float]:
+    from pipeline.report_screening import _kappa_from_confusion
+
+    return _kappa_from_confusion(confusion)
+
+
+def _agreement(tmp_path, agree=280, n=300, gate_met=None, human=None, ai=None):
+    """Build an agreement report that passes the gate's own consistency checks.
+
+    The gate recomputes n, observed agreement and kappa from the confusion
+    matrix and verifies the input logs still hash to what was recorded, so a
+    fixture cannot just assert a kappa any more — it has to supply a matrix
+    that produces one, and real files to hash.
+    """
+    human_path = human or (tmp_path / "human.jsonl")
+    ai_path = ai or (tmp_path / "ai.jsonl")
+    for f in (human_path, ai_path):
+        if not f.exists():
+            f.write_text(f"placeholder for {f.name}\n", encoding="utf-8")
+
+    confusion = _consistent_confusion(n, agree)
+    recomputed_n, observed, kappa = _kappa_of(confusion)
+    assert recomputed_n == n
+
     report = AgreementReport(
-        n=n, observed_agreement=0.9, expected_agreement=0.45, kappa=kappa,
-        kappa_ci_low=kappa - 0.06, kappa_ci_high=kappa + 0.06,
-        confusion={"include_include": 100}, disagreements=[],
-        gate=0.75, gate_met=gate_met,
-        model_id="claude-opus-5", prompt_sha256=PROMPT,
+        n=n,
+        observed_agreement=observed,
+        expected_agreement=0.0,
+        kappa=kappa,
+        kappa_ci_low=max(-1.0, kappa - 0.06),
+        kappa_ci_high=min(1.0, kappa + 0.06),
+        confusion=confusion,
+        disagreements=[],
+        gate=0.75,
+        gate_met=kappa >= 0.75 if gate_met is None else gate_met,
+        human_path=str(human_path),
+        human_sha256=file_sha256(human_path),
+        ai_path=str(ai_path),
+        ai_sha256=file_sha256(ai_path),
+        sample_path=None,
+        sample_sha256=None,
+        model_id="claude-opus-5",
+        prompt_sha256=PROMPT,
     )
     path = tmp_path / "agreement.json"
     path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
@@ -61,29 +117,104 @@ def test_no_agreement_report_means_no_screening_count(tmp_path):
 
 def test_a_failed_gate_blocks_the_count_and_names_the_kappa(tmp_path):
     decisions = _decisions(tmp_path, 3)
-    agreement = _agreement(tmp_path, kappa=0.61, gate_met=False)
+    agreement = _agreement(tmp_path, agree=200)
 
     with pytest.raises(GateNotPassed) as excinfo:
         screening_stage(decisions, agreement, identified=3)
 
-    assert "0.610" in str(excinfo.value)
+    assert "kappa=" in str(excinfo.value)
     assert "NOT passed" in str(excinfo.value)
 
 
 def test_a_passing_gate_returns_the_kappa(tmp_path):
-    assert assert_gate(load_agreement(_agreement(tmp_path, kappa=0.88))) == 0.88
+    assert assert_gate(load_agreement(_agreement(tmp_path, agree=290))) > 0.75
 
 
-def test_gate_met_is_what_decides_not_the_kappa_value(tmp_path):
-    """Trust the flag the agreement module computed, not a re-derivation here.
+def test_a_report_claiming_a_failed_gate_is_believed(tmp_path):
+    """REVERSAL, 2026-09-17. This test previously said the opposite.
 
-    Two modules independently comparing a float to 0.75 is two chances to
-    disagree at the boundary. If this test fails, report_screening has started
-    second-guessing agreement.compare rather than deferring to it.
+    It used to read: "Trust the flag the agreement module computed, not a
+    re-derivation here" — on the reasoning that two modules comparing a float
+    to 0.75 is two chances to disagree at the boundary. That reasoning holds
+    for trusted input and fails completely for a file anyone can edit.
+
+    An adversarial audit opened the gate with a hand-typed agreement report
+    carrying gate_met: true, kappa 0.10, n 1, an empty confusion matrix and a
+    made-up model name — and rendered the real PRISMA table into a document
+    whose header reads "No number in this document was typed by hand."
+
+    The gate now recomputes. What survives of the original intent is only this
+    direction: a report that says it FAILED is believed without argument. The
+    asymmetry is deliberate — refusing is always safe, permitting never is.
     """
-    agreement = load_agreement(_agreement(tmp_path, kappa=0.99, gate_met=False))
-    with pytest.raises(GateNotPassed):
+    agreement = load_agreement(_agreement(tmp_path, agree=299, gate_met=False))
+    with pytest.raises(GateNotPassed, match="refusing to second-guess"):
         assert_gate(agreement)
+
+
+# --- forgery: the attacks an adversarial audit actually landed --------------
+
+
+def _forge(tmp_path, **overrides):
+    """Hand-write an agreement report, the way a forger would."""
+    path = _agreement(tmp_path, agree=200)          # genuinely failing
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc.update(overrides)
+    path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    return path
+
+
+def test_flipping_gate_met_does_not_open_the_gate(tmp_path):
+    """The exact one-token edit the audit used."""
+    forged = _forge(tmp_path, gate_met=True)
+
+    with pytest.raises(GateNotPassed, match="NOT passed"):
+        assert_gate(load_agreement(forged))
+
+
+def test_a_claimed_kappa_that_the_matrix_does_not_support_is_refused(tmp_path):
+    """Claiming 0.99 while the confusion matrix says otherwise."""
+    forged = _forge(tmp_path, gate_met=True, kappa=0.99)
+
+    with pytest.raises(GateNotPassed, match="internally inconsistent"):
+        assert_gate(load_agreement(forged))
+
+
+def test_an_empty_confusion_matrix_is_refused(tmp_path):
+    """The audit's forged report carried n=1 and no matrix at all."""
+    forged = _forge(tmp_path, gate_met=True, kappa=0.99, n=1, confusion={})
+
+    with pytest.raises(GateNotPassed, match="empty confusion matrix"):
+        assert_gate(load_agreement(forged))
+
+
+def test_a_claimed_n_that_the_matrix_does_not_support_is_refused(tmp_path):
+    forged = _forge(tmp_path, n=999)
+
+    with pytest.raises(GateNotPassed, match="internally inconsistent"):
+        assert_gate(load_agreement(forged))
+
+
+def test_a_report_whose_human_log_has_changed_is_refused(tmp_path):
+    """Recomputing kappa is not enough if the inputs can be swapped after."""
+    agreement = _agreement(tmp_path, agree=290)
+    (tmp_path / "human.jsonl").write_text("something else entirely\n", encoding="utf-8")
+
+    with pytest.raises(GateNotPassed, match="has changed since"):
+        assert_gate(load_agreement(agreement))
+
+
+def test_a_report_whose_human_log_is_missing_is_refused(tmp_path):
+    agreement = _agreement(tmp_path, agree=290)
+    (tmp_path / "human.jsonl").unlink()
+
+    with pytest.raises(GateNotPassed, match="is missing"):
+        assert_gate(load_agreement(agreement))
+
+
+def test_a_genuinely_consistent_passing_report_still_works(tmp_path):
+    """The hardening must not make a real passing gate unusable."""
+    assert assert_gate(load_agreement(_agreement(tmp_path, agree=290))) > 0.75
 
 
 # --- completeness of the screening log --------------------------------------
@@ -150,7 +281,7 @@ def test_a_complete_gated_run_produces_the_stage(tmp_path):
             model_id="claude-opus-5", prompt_sha256=PROMPT, stage="screening",
             decided_at="2026-09-14T00:00:00Z", supersedes=None,
         ))
-    agreement = _agreement(tmp_path, kappa=0.81)
+    agreement = _agreement(tmp_path, agree=285)
 
     stage, summary = screening_stage(path, agreement, identified=10)
 
@@ -158,7 +289,7 @@ def test_a_complete_gated_run_produces_the_stage(tmp_path):
     assert stage.excluded == 6
     assert stage.included == 4
     assert "no_measured_marker=6" in stage.reason
-    assert "kappa=0.810" in stage.reason
+    assert "kappa=" in stage.reason
     assert summary["include"] == 4 and summary["exclude"] == 6
     assert summary["model_id"] == "claude-opus-5"
     assert summary["prompt_sha256"] == PROMPT

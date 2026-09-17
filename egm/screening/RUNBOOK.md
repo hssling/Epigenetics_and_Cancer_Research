@@ -109,7 +109,16 @@ rather than skipping it silently. Re-dispatch those and collect again.
 
     python -m pipeline.report_agreement \
       --human screening/human_calibration.jsonl \
-      --ai screening/screening_decisions_sonnet.jsonl \n      --out screening/agreement_sonnet.json
+      --ai screening/screening_decisions_sonnet.jsonl \
+      --sample screening/calibration_300.json \
+      --out screening/agreement_sonnet.json
+
+`--sample` is not optional here. The human log covers the 300 calibration
+records; the AI log covers all 9,786. Without it the command raises
+"decision logs cover different records" — which is what this step did
+until an audit tried to run it as written. The sample file names the
+records the kappa is about, so the comparison population is a committed
+artefact rather than whatever the two logs happen to share.
 
 Read every disagreement. Where one reveals genuine ambiguity, revise — and
 note which kind of revision it is:
@@ -153,7 +162,8 @@ The commands below are kept for that case, and for the record.
       --corpus search/raw/combined_corpus_v3.json \
       --out-dir screening/batches_rerun \
       --batch-size 100 \
-      --stage screening       --prompt-version v3
+      --stage screening \
+      --prompt-version v3
 
 98 batches of 100. Dispatch agents as in step 3, then:
 
@@ -169,7 +179,15 @@ before proceeding.
     python -m pipeline.draw_sample validation \
       --corpus search/raw/combined_corpus_v3.json \
       --decisions screening/screening_decisions_sonnet.jsonl \
+      --batches screening/batches_screening \
       --out screening/validation_1000.json
+
+`--batches` points at the batch files the model was actually given. The
+drawn text is checked against them and the draw is refused if it has
+drifted. Pointing `--corpus` at `combined_corpus.json` or `_v2.json` — the
+pre-dedup corpora — reproduces the same 1,000 record_ids, but 82 of them
+carry a title or abstract the model never saw. The check catches exactly
+that, and refuses before writing anything.
 
 **Already drawn** (2026-09-17): 1,000 AI-excluded records, 500 low / 300 mid /
 200 high, seed 20260913. The confidence strata were reset before drawing —

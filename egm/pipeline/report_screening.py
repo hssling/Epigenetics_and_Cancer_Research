@@ -17,6 +17,7 @@ It is deliberately impossible to satisfy this check with AI decisions alone.
 one AI log, so a second model run cannot stand in for the investigator.
 """
 import argparse
+import hashlib
 import json
 import pathlib
 from typing import Any, Optional
@@ -43,18 +44,115 @@ def load_agreement(path: pathlib.Path) -> AgreementReport:
     return AgreementReport(**json.loads(path.read_text(encoding="utf-8")))
 
 
+def _kappa_from_confusion(confusion: dict[str, int]) -> tuple[int, float, float]:
+    """Recompute (n, observed agreement, kappa) from the confusion matrix alone.
+
+    Keys are "human_label->ai_label". Reconstructing the marginals from the
+    matrix lets the gate check the report against itself instead of taking its
+    word for it.
+    """
+    n = sum(confusion.values())
+    if n == 0:
+        raise GateNotPassed("agreement report has an empty confusion matrix")
+
+    agree = sum(v for k, v in confusion.items() if k.split("->")[0] == k.split("->")[1])
+    observed = agree / n
+
+    human_counts: dict[str, int] = {}
+    ai_counts: dict[str, int] = {}
+    for key, count in confusion.items():
+        h, a = key.split("->")
+        human_counts[h] = human_counts.get(h, 0) + count
+        ai_counts[a] = ai_counts.get(a, 0) + count
+
+    labels = set(human_counts) | set(ai_counts)
+    expected = sum(
+        (human_counts.get(l, 0) / n) * (ai_counts.get(l, 0) / n) for l in labels
+    )
+    if expected == 1.0:
+        return n, observed, 1.0
+    return n, observed, (observed - expected) / (1 - expected)
+
+
 def assert_gate(agreement: AgreementReport) -> float:
-    """Return kappa if the Stage 0 gate is passed; raise GateNotPassed if not."""
-    if not agreement.gate_met:
+    """Return kappa if the Stage 0 gate is genuinely passed; raise otherwise.
+
+    This does NOT simply read `gate_met`. An earlier version did, and that was
+    the whole vulnerability: an agreement report is a plain JSON file, and the
+    only thing standing between a fabricated one and a published PRISMA table
+    was a boolean someone could type. An adversarial audit opened the gate with
+    a hand-written report carrying kappa 0.10, n 1, an empty confusion matrix
+    and a made-up model name.
+
+    Three things are checked here, in order:
+
+      1. The report is internally consistent. n, observed agreement and kappa
+         are recomputed from the confusion matrix and must match what the
+         report claims. A forger must now supply a confusion matrix that really
+         does produce the kappa they want -- which means constructing plausible
+         paired decisions, not editing one field.
+      2. The inputs still hash to what was recorded. The human and AI logs the
+         report names must exist and be unchanged.
+      3. Only then, whether the gate was met.
+
+    None of this defeats someone determined to fabricate a 300-record human
+    log; nothing in a local filesystem can. It raises forgery from a one-token
+    edit to a deliberate, multi-file act that leaves the fabricated log on disk
+    where a reader can inspect it.
+    """
+    n, observed, kappa = _kappa_from_confusion(agreement.confusion)
+
+    if n != agreement.n:
         raise GateNotPassed(
-            f"Stage 0 gate NOT passed: kappa={agreement.kappa:.3f} "
-            f"(95% CI {agreement.kappa_ci_low:.3f} to "
-            f"{agreement.kappa_ci_high:.3f}) against a gate of "
-            f"{agreement.gate}, on n={agreement.n}. Protocol Section 5 permits "
+            f"agreement report is internally inconsistent: it claims n="
+            f"{agreement.n} but its confusion matrix totals {n}. A report whose "
+            "own numbers disagree cannot open the gate."
+        )
+    if abs(observed - agreement.observed_agreement) > 1e-9:
+        raise GateNotPassed(
+            f"agreement report is internally inconsistent: claims observed "
+            f"agreement {agreement.observed_agreement:.6f}, confusion matrix "
+            f"gives {observed:.6f}."
+        )
+    if abs(kappa - agreement.kappa) > 1e-6:
+        raise GateNotPassed(
+            f"agreement report is internally inconsistent: claims kappa "
+            f"{agreement.kappa:.6f}, confusion matrix gives {kappa:.6f}. The "
+            "gate is decided by the recomputed value, never by the stored one."
+        )
+
+    for role, path_str, expected_hash in (
+        ("human", agreement.human_path, agreement.human_sha256),
+        ("AI", agreement.ai_path, agreement.ai_sha256),
+    ):
+        path = pathlib.Path(path_str)
+        if not path.exists():
+            raise GateNotPassed(
+                f"the {role} decision log this report was computed from "
+                f"({path_str}) is missing. The gate cannot be verified against "
+                "inputs that are not there."
+            )
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != expected_hash:
+            raise GateNotPassed(
+                f"the {role} decision log ({path_str}) has changed since this "
+                f"agreement report was computed (sha256 {actual[:12]} vs "
+                f"{expected_hash[:12]}). Recompute the agreement report."
+            )
+
+    if kappa < agreement.gate:
+        raise GateNotPassed(
+            f"Stage 0 gate NOT passed: recomputed kappa={kappa:.3f} against a "
+            f"gate of {agreement.gate}, on n={n}. Protocol Section 5 permits "
             "refining the instrument and re-screening; it does not permit "
             "reporting screening results from a run that failed the gate."
         )
-    return agreement.kappa
+    if not agreement.gate_met:
+        raise GateNotPassed(
+            f"report records gate_met=False despite a recomputed kappa of "
+            f"{kappa:.3f}; refusing to second-guess it. Recompute the report."
+        )
+    return kappa
 
 
 def screening_stage(
@@ -125,18 +223,45 @@ def screening_stage(
     return stage, summary
 
 
+def corpus_size(corpus_path: pathlib.Path) -> int:
+    """How many records entered screening, read from the corpus itself.
+
+    The denominator used to be a command-line integer. That made the most
+    important number in the PRISMA flow the one thing an operator typed: an
+    audit ran the reporter with `--identified 1700` against a log covering
+    1,700 of 9,786 records and got a complete, internally consistent,
+    entirely wrong screening row, because the completeness check compares the
+    log against the number supplied rather than against the corpus.
+
+    Reading it from the corpus does not make the number unforgeable -- the
+    corpus is a file too -- but it removes the case that matters, where a
+    partial run is reported in good faith because the operator passed the
+    count that matched it.
+    """
+    corpus_path = pathlib.Path(corpus_path)
+    if not corpus_path.exists():
+        raise ValueError(
+            f"no corpus at {corpus_path}; the number of records entering "
+            "screening is read from the corpus, not supplied by the operator"
+        )
+    return len(json.loads(corpus_path.read_text(encoding="utf-8"))["records"])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Screening PRISMA counts (requires a passing Stage 0 gate)"
     )
     parser.add_argument("--decisions", type=pathlib.Path, required=True)
     parser.add_argument("--agreement", type=pathlib.Path, required=True)
-    parser.add_argument("--identified", type=int, required=True)
+    parser.add_argument(
+        "--corpus", type=pathlib.Path, required=True,
+        help="the screened corpus; its record count is the PRISMA denominator",
+    )
     parser.add_argument("--out", type=pathlib.Path, required=True)
     args = parser.parse_args()
 
     stage, summary = screening_stage(
-        args.decisions, args.agreement, args.identified
+        args.decisions, args.agreement, corpus_size(args.corpus)
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(summary, indent=2), encoding="utf-8")

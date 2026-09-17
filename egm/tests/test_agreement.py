@@ -1,4 +1,6 @@
 """Cohen's kappa and the kappa >= 0.75 gate."""
+import json
+
 import pytest
 
 from pipeline.agreement import cohens_kappa, compare
@@ -230,3 +232,71 @@ def test_agreement_report_raises_when_ai_log_spans_two_models(tmp_path):
 
     with pytest.raises(ValueError, match="more than one AI model"):
         compare(human_p, ai_p, gate=0.75)
+
+
+# --- the gate command must be runnable on the logs that actually exist -------
+
+
+def _sample(tmp_path, record_ids, name="sample.json"):
+    path = tmp_path / name
+    path.write_text(json.dumps(
+        [{"record_id": r, "title": "T", "abstract": "A"} for r in record_ids]
+    ), encoding="utf-8")
+    return path
+
+
+def test_a_sample_lets_a_300_record_human_log_meet_a_whole_corpus_ai_log(tmp_path):
+    """The real shape of the Stage 0 gate, which set-equality made impossible.
+
+    The investigator screens the 300-record calibration sample; the model has
+    screened all 9,786 records. An audit found the documented gate command
+    raising "logs cover different records" -- so the one command the whole
+    protocol turns on could not be run as written.
+    """
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    calibration = [f"egm-{n}" for n in range(30)]
+    pairs = [(r, "include" if int(r.split("-")[1]) < 12 else "exclude",
+              None if int(r.split("-")[1]) < 12 else "not_primary")
+             for r in calibration]
+    _write(human_p, pairs, "human")
+    # the AI log covers the whole corpus, not just the sample
+    _write(ai_p, pairs + [(f"egm-{n}", "exclude", "not_primary")
+                          for n in range(30, 300)], "ai")
+
+    report = compare(human_p, ai_p, sample_path=_sample(tmp_path, calibration))
+
+    assert report.n == 30
+    assert report.kappa == 1.0
+    assert report.sample_path is not None and report.sample_sha256 is not None
+
+
+def test_a_sampled_record_missing_from_either_log_is_refused(tmp_path):
+    """Otherwise the kappa is computed on whatever happens to be finished."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "exclude", "not_primary") for n in range(20)]
+    _write(human_p, pairs[:10], "human")      # investigator stopped half way
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="human log is missing 10"):
+        compare(human_p, ai_p, sample_path=_sample(tmp_path, [p[0] for p in pairs]))
+
+
+def test_without_a_sample_set_equality_still_binds(tmp_path):
+    """The relaxation is opt-in and explicit; it is not the new default."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "exclude", "not_primary") for n in range(20)]
+    _write(human_p, pairs[:10], "human")
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="cover different records"):
+        compare(human_p, ai_p)
+
+
+def test_an_empty_sample_is_refused(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "exclude", "not_primary") for n in range(5)]
+    _write(human_p, pairs, "human")
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="no records to compare"):
+        compare(human_p, ai_p, sample_path=_sample(tmp_path, []))

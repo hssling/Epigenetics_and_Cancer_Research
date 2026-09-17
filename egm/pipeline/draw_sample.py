@@ -32,6 +32,77 @@ def _write(out_path: pathlib.Path, records: list[dict[str, Any]]) -> None:
     out_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
 
 
+# The fields whose drift would change a screening judgement. year and journal
+# are carried in the batch too, but a corrected journal name does not make the
+# investigator and the model disagree about eligibility; a changed abstract does.
+JUDGEMENT_FIELDS: tuple[str, ...] = ("title", "abstract")
+
+
+def screened_text(batches_dir: pathlib.Path) -> dict[str, dict[str, Any]]:
+    """What the screener was actually shown, read from the batch files.
+
+    The batch files are the only record of the text the model judged. The
+    corpus is a live artefact: `backfill_abstracts` rewrites it, a re-run of
+    the search rewrites it, and neither leaves a mark on the decision log.
+    """
+    batches_dir = pathlib.Path(batches_dir)
+    if not batches_dir.is_dir():
+        raise ValueError(
+            f"no batch directory at {batches_dir}; the sample cannot be checked "
+            "against the text the screener saw"
+        )
+    seen: dict[str, dict[str, Any]] = {}
+    for path in sorted(batches_dir.glob("batch_*.json")):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        for record in payload["records"]:
+            seen[record["record_id"]] = record
+    if not seen:
+        raise ValueError(f"{batches_dir} contains no batch files")
+    return seen
+
+
+def _assert_text_is_what_was_screened(
+    drawn: list[dict[str, Any]], batches_dir: pathlib.Path
+) -> None:
+    """Refuse a sample whose text has drifted from what the AI was shown.
+
+    An audit redrew this sample after the corpus had been updated. The same
+    record_ids came back -- the seed is deterministic and the ids are stable --
+    but 82 of them carried a title or abstract the model never saw. The
+    investigator would have screened one text, the AI another, and every
+    disagreement between them would have been scored as a recall failure.
+
+    Nothing in the decision log records which corpus produced it, so this
+    compares against the batch files instead: those are what the screener was
+    handed, and they are written once and never overwritten.
+    """
+    seen = screened_text(batches_dir)
+    drifted: list[str] = []
+    missing: list[str] = []
+    for record in drawn:
+        rid = record["record_id"]
+        if rid not in seen:
+            missing.append(rid)
+            continue
+        if any(record.get(f) != seen[rid].get(f) for f in JUDGEMENT_FIELDS):
+            drifted.append(rid)
+
+    if missing:
+        raise ValueError(
+            f"{len(missing)} drawn record(s) were never in a batch file, so "
+            f"there is no record of what the screener saw: {missing[:5]}"
+        )
+    if drifted:
+        raise ValueError(
+            f"{len(drifted)} of {len(drawn)} drawn records carry a title or "
+            f"abstract that differs from the text the screener was shown "
+            f"(e.g. {drifted[:5]}). The corpus has changed since screening ran. "
+            "Screening this sample would score the investigator against text "
+            "the model never saw. Draw from the batch files, or re-screen the "
+            "affected records, and record the decision in the amendments log."
+        )
+
+
 def draw_calibration(
     corpus_path: pathlib.Path,
     out_path: pathlib.Path,
@@ -62,6 +133,7 @@ def draw_validation(
     out_path: pathlib.Path,
     per_stratum: dict[str, int],
     seed: int,
+    batches_dir: pathlib.Path,
 ) -> dict[str, int]:
     """Draw the validation sample from AI exclusions, stratified by confidence."""
     by_id = {r["record_id"]: r for r in _load_records(corpus_path)}
@@ -80,6 +152,9 @@ def draw_validation(
         strata.append(stratum_of(decision.confidence))
 
     drawn = stratified_sample(excluded, strata, per_stratum, seed=seed)
+    # Before writing: a sample that would be screened against drifted text
+    # must not reach disk, where it looks indistinguishable from a good one.
+    _assert_text_is_what_was_screened(drawn, batches_dir)
     _write(out_path, drawn)
 
     counts = defaultdict(int)
@@ -111,6 +186,11 @@ def main() -> None:
     val.add_argument("--mid", type=int, default=300)
     val.add_argument("--high", type=int, default=200)
     val.add_argument("--seed", type=int, default=20260913)
+    val.add_argument(
+        "--batches", type=pathlib.Path, required=True,
+        help="the batch directory the screener was given; the drawn text is "
+             "checked against it so a changed corpus cannot be screened blind",
+    )
 
     args = parser.parse_args()
     if args.which == "calibration":
@@ -119,6 +199,7 @@ def main() -> None:
         counts = draw_validation(
             args.corpus, args.decisions, args.out,
             {"low": args.low, "mid": args.mid, "high": args.high}, args.seed,
+            args.batches,
         )
     for key, value in counts.items():
         print(f"{key}: {value}")

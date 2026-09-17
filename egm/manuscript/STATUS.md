@@ -96,7 +96,11 @@ The app cannot display an AI decision, so blindness is structural. Then:
 
     python -m pipeline.report_agreement --human screening/human_calibration.jsonl \
       --ai screening/screening_decisions_sonnet.jsonl \
+      --sample screening/calibration_300.json \
       --out screening/agreement_sonnet.json
+
+(`--sample` names the 300 records the kappa is about. The human log covers
+those; the AI log covers all 9,786, so without it the command refuses.)
 
 If kappa ≥ 0.75, the gate opens and the screening counts become reportable. If
 not, the registered response is to refine the instrument and re-screen — the
