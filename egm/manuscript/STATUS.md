@@ -33,7 +33,8 @@ this project's results.
 | **Cohen's kappa / Stage 0 gate** | **NOT PASSED** | — |
 | **Recall validation: human screening of 1,000** | **NOT DONE — needs the investigator** | — |
 | **Full-text screening** | NOT DONE | — |
-| **Coding / data extraction** | NOT DONE | — |
+| Coding schema (the extraction instrument) | Complete — built, not yet used | `pipeline/coding_schema.py` |
+| **Coding / data extraction** | NOT DONE — no study coded | — |
 | **Risk-of-bias assessment** | NOT DONE | — |
 | **Evidence gap map** | NOT DONE | — |
 | **Meta-analysis** | NOT DONE | — |
