@@ -14,6 +14,7 @@ That ordering is the point of this file, not a courtesy.
 | 3 | 2026-09-14 | 5 Screening, Stage 0 | Screening instrument refined `screening_v1.md` → `screening_v2.md` after calibration round 1 | Registered Stage 0 behaviour ("eligibility criteria and AI prompt refined"). Round 1 exposed an unreachable criterion and a missing one. See Amendment 3. |
 | 4 | 2026-09-14 | 5 Screening, Stage 0 | Instrument refined `screening_v2.md` → `screening_v3.md` after calibration round 2 | Round 2 exposed two defects introduced by v2's own wording. See Amendment 4. |
 | 5 | 2026-09-17 | 5 Screening, Stage 2 | Recall-validation confidence strata reset from (<0.5, <0.8) to (<0.66, <0.81) | The registered boundaries left only 16 of 3,767 exclusions in the stratum the design draws 500 from. See Amendment 5. |
+| 6 | 2026-09-17 | 4.1 Information sources | ClinicalTrials.gov searched as a separate registry stream (694 registrations). WHO ICTRP **not** searched. | The registered registry search was outstanding. ICTRP has no endpoint callable unattended; it remains an outstanding manual step. See Amendment 6. |
 
 ---
 
@@ -38,8 +39,8 @@ search fewer databases than registered and leave the gap implicit:
 | Embase | no access | **Europe PMC**, 2026-09-14, 890 retrieved |
 | Web of Science | no access | not substituted at this stage |
 | Cochrane CENTRAL | access uncertain | not yet searched |
-| ClinicalTrials.gov | free | not yet searched |
-| WHO ICTRP | free | not yet searched |
+| ClinicalTrials.gov | free | **searched**, 2026-09-17, 694 retrieved (Amendment 6) |
+| WHO ICTRP | free, but not callable unattended | not searched — outstanding as a manual step (Amendment 6) |
 
 ### The `NOT SRC:MED` restriction, and why it is not a narrowing
 
@@ -338,3 +339,112 @@ satisfies it.
 The stratum-weighted recall estimate uses these population sizes, so the
 weights change with them. Both the unweighted and the weighted estimate are
 reported, as Section 8 requires.
+
+---
+
+## Amendment 6 (enacted 2026-09-17): trial registry search
+
+### What the registration says
+
+Protocol Section 4.1 lists two trial registries, **ClinicalTrials.gov** and
+**WHO ICTRP**, with a purpose distinct from the bibliographic databases:
+"identifying unpublished and ongoing studies, and populating a 'registered but
+unreported' overlay on the map that indicates where evidence is in flight."
+
+Both stood recorded as "not yet searched" in Amendment 1 and in PRISMA-S item 3.
+
+### What was done
+
+**ClinicalTrials.gov: searched.** 694 registrations, 2026-09-17, via API v2,
+which requires no credential. `search/raw/ctgov_registry.json`.
+
+**WHO ICTRP: not searched.** The reason is narrower than "no access", and
+worth stating precisely because it determines what can still be done.
+
+ICTRP does publish a Search Portal Web Service, and its portal does allow
+search results to be downloaded in CSV and XML, including all records of a
+search, under WHO's Terms and Conditions. Neither route is an open endpoint
+this pipeline can call unattended: the web service operates on an agreed-partner
+basis arranged with WHO, and the portal download is an interactive action
+requiring acceptance of those Terms. Accepting terms on the investigator's
+behalf is not something this pipeline does.
+
+**ICTRP therefore remains available to the investigator as a manual step**, and
+is recorded as outstanding rather than impossible. Executing it would be a
+further amendment, with the downloaded export entering as its own stream
+alongside ClinicalTrials.gov.
+
+ICTRP aggregates ClinicalTrials.gov together with the other primary registries,
+so much of its content for this topic is already reached through the search
+that was run. The gap is real for trials registered **only** in a non-US
+registry (ChiCTR, ISRCTN, CTRI, IRCT and the rest), and is carried in the
+limitations rather than offset by a claim of equivalence.
+
+### These records are a separate stream, not corpus additions
+
+The 694 registrations do **not** join the 9,786-record screening corpus, and
+the existing screening is therefore untouched by this amendment.
+
+The reason is not procedural convenience. A registration is not a publication.
+A trial that was registered and never published is the *absence* of evidence,
+and merging the two streams would let it be counted as evidence — the precise
+inversion the overlay exists to expose. PRISMA 2020 gives registers their own
+identification column for this reason, and so does `render_prisma.py`.
+
+They are modelled separately too: `RegistryRecord` rather than `SearchRecord`,
+with no journal, no author list and no abstract, so the type system refuses the
+conflation rather than relying on anyone remembering it.
+
+### How the registered strategy was translated, and what it cost
+
+The PubMed strategy is CORE AND HUMAN AND (EXPOSURE OR CLINICAL_USE) AND DESIGN
+AND YEARS, every term restricted to `[tiab]`. Clause by clause, with counts
+measured live before the module was written:
+
+| Clause | Decision | Why |
+|---|---|---|
+| CORE | kept | the concept the map is about |
+| `[tiab]` | kept, as `AREA[BriefTitle]` OR `AREA[BriefSummary]` | unrestricted, `query.term` matches eligibility criteria and outcome text: 1,771 vs 694 |
+| HUMAN | dropped | ClinicalTrials.gov registers human studies only — vacuous, not relaxed |
+| DESIGN | dropped | its purpose is excluding reviews, editorials and case reports; a registry contains none |
+| EXPOSURE OR CLINICAL_USE | **dropped** | see below |
+| YEARS | kept, against StartDate | a registration has no publication year |
+
+The last one is a judgement rather than a formality, so the measurements are
+given in full: restricted to title/summary like the core block it yields 535;
+applied unrestricted, 679; omitted, 694.
+
+It was dropped because in a registry those concepts live in the structured
+intervention and outcome-measure fields, not in the summary prose — a diet
+trial's brief summary frequently never uses the word "diet". Dropping a fifth
+of the registry stream on a clause the record format cannot express would be an
+artefact of the source, not an eligibility decision. Eligibility is decided at
+screening, on the same instrument as everything else.
+
+The net effect is a wider net over a much smaller pool: 694 registrations
+against 9,786 bibliographic records. For an overlay whose question is "what is
+in flight that we cannot yet see", under-retrieval is the expensive error.
+
+### What the stream contains
+
+| | n |
+|---|---:|
+| registrations retrieved | 694 |
+| interventional | 380 |
+| observational | 314 |
+| completed | 194 |
+| results posted to the registry | 25 |
+| with a registry-linked result publication | 125 |
+| **unreported-overlay candidates** | **123** |
+
+An overlay candidate is a registration that is COMPLETED, carries an **ACTUAL**
+(not estimated) completion date, has no results posted to the registry, and has
+no linked result publication.
+
+**123 is a count of candidates, not a finding.** Confirmation requires checking
+each against the bibliographic corpus, which has not been done and cannot be
+reported before the Stage 0 gate. The ACTUAL-versus-ESTIMATED distinction is
+enforced in the data model rather than by convention: an abandoned 2019
+*projected* completion date says nothing about whether a trial finished, and
+collapsing the two would manufacture overdue trials out of projections —
+inventing exactly the finding this overlay is meant to report.

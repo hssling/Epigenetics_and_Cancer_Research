@@ -24,8 +24,43 @@ the sole investigator has no institutional subscription to either. This is
 recorded as an enacted amendment in `protocol/amendments.md` and is carried into
 the manuscript's limitations, not into a claim of equivalent coverage.
 
-**3. Study registries.** ClinicalTrials.gov and WHO ICTRP are specified in the
-protocol and have **not yet been searched**. They remain outstanding.
+**3. Study registries.** ClinicalTrials.gov was searched on 2026-09-17 via API
+v2 (no credential required), returning **694 registrations** — 380
+interventional, 314 observational. These form a separate PRISMA
+identification stream and do not join the 9,786-record screening corpus: a
+registration is not a publication, and merging the two would let a trial that
+was registered and never published be counted as evidence.
+
+The registered strategy was translated clause by clause, with each decision
+measured against live counts before the search was run. The `[tiab]`
+restriction was kept as `AREA[BriefTitle]`/`AREA[BriefSummary]` (without it
+the core block returns 1,771 rather than 694); the HUMAN and DESIGN clauses
+were dropped as vacuous in a registry of human studies; the exposure and
+clinical-use block was dropped because in a registry those concepts are held
+in structured intervention and outcome fields rather than in summary prose.
+`protocol/amendments.md`, Amendment 6, gives the counts for each alternative.
+
+**WHO ICTRP: not searched.** The reason is narrower than "no access", and
+worth stating precisely because it determines what can still be done.
+
+ICTRP does publish a Search Portal Web Service, and its portal does allow
+search results to be downloaded in CSV and XML, including all records of a
+search, under WHO's Terms and Conditions. Neither route is an open endpoint
+this pipeline can call unattended: the web service operates on an agreed-partner
+basis arranged with WHO, and the portal download is an interactive action
+requiring acceptance of those Terms. Accepting terms on the investigator's
+behalf is not something this pipeline does.
+
+**ICTRP therefore remains available to the investigator as a manual step**, and
+is recorded as outstanding rather than impossible. Executing it would be a
+further amendment, with the downloaded export entering as its own stream
+alongside ClinicalTrials.gov.
+
+ICTRP aggregates ClinicalTrials.gov together with the other primary registries,
+so much of its content for this topic is already reached through the search
+that was run. The gap is real for trials registered **only** in a non-US
+registry (ChiCTR, ISRCTN, CTRI, IRCT and the rest), and is carried in the
+limitations rather than offset by a claim of equivalence.
 
 **4. Online resources and browsing.** None used. No hand-browsing of journal
 tables of contents contributed records to the corpus at this stage; the

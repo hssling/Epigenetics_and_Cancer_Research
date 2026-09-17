@@ -96,3 +96,92 @@ def test_gate_closed_block_does_not_claim_unverified_coverage(tmp_path):
     assert "Every one has a recorded decision" not in text
     assert "decision log covers 0 of them" in text
     assert "do not match" in text
+
+
+# --- registers are their own identification stream ---------------------------
+
+
+def _registry(tmp_path, n_interventional=3, n_observational=2):
+    path = tmp_path / "registry.json"
+    records = (
+        [{"source_id": f"NCT{i:08d}", "study_type": "INTERVENTIONAL"}
+         for i in range(n_interventional)]
+        + [{"source_id": f"NCT9{i:07d}", "study_type": "OBSERVATIONAL"}
+           for i in range(n_observational)]
+    )
+    path.write_text(json.dumps({"manifest": {}, "records": records}), encoding="utf-8")
+    return path
+
+
+def test_registry_counts_are_derived_from_the_artefact(tmp_path):
+    ident, decisions, agreement = _inputs(tmp_path)
+    out = tmp_path / "flow.md"
+
+    render_prisma.render(ident, decisions, agreement, out, None,
+                         _registry(tmp_path, 3, 2))
+    text = out.read_text(encoding="utf-8")
+
+    assert "| ClinicalTrials.gov | 5 |" in text
+    assert "| interventional | 3 |" in text
+    assert "| observational | 2 |" in text
+
+
+def test_registrations_are_never_added_to_the_corpus_count(tmp_path):
+    """The inversion this stream exists to expose.
+
+    A trial registered and never published is the ABSENCE of evidence. If the
+    694 registrations were folded into the 9,786 screened records, that absence
+    would be counted as evidence.
+    """
+    ident, decisions, agreement = _inputs(tmp_path)
+    out = tmp_path / "flow.md"
+
+    render_prisma.render(ident, decisions, agreement, out, None,
+                         _registry(tmp_path, 3, 2))
+    text = out.read_text(encoding="utf-8")
+
+    # 9,786 is the corpus; 9,791 would be the corpus with registrations merged.
+    assert "9,786" in text
+    assert "9,791" not in text
+    assert "not** part of the screening corpus" in text
+
+
+def test_an_unsearched_register_says_so_rather_than_showing_nothing(tmp_path):
+    """Silence would read as 'no registrations found', which is a different claim."""
+    ident, decisions, agreement = _inputs(tmp_path)
+    out = tmp_path / "flow.md"
+
+    render_prisma.render(ident, decisions, agreement, out)
+    text = out.read_text(encoding="utf-8")
+
+    assert "Identification from registers" in text
+    assert "Not searched" in text
+
+
+def test_ictrp_is_named_as_unsearched_even_when_ctgov_ran(tmp_path):
+    """A half-executed registry commitment must not read as a complete one."""
+    ident, decisions, agreement = _inputs(tmp_path)
+    out = tmp_path / "flow.md"
+
+    render_prisma.render(ident, decisions, agreement, out, None,
+                         _registry(tmp_path))
+    text = out.read_text(encoding="utf-8")
+
+    assert "| WHO ICTRP | not searched |" in text
+
+
+def test_the_overlay_finding_stays_out_of_the_prisma_figure(tmp_path):
+    """Identification counts are ungated; findings are not.
+
+    'Registered but unreported' is a claim about the evidence base and needs
+    the bibliographic corpus to confirm. It waits for the Stage 0 gate.
+    """
+    ident, decisions, agreement = _inputs(tmp_path)
+    out = tmp_path / "flow.md"
+
+    render_prisma.render(ident, decisions, agreement, out, None,
+                         _registry(tmp_path))
+    text = out.read_text(encoding="utf-8").lower()
+
+    for forbidden in ("unreported", "overlay candidate"):
+        assert forbidden not in text, f"{forbidden!r} is a finding, not identification"

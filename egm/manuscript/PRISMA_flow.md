@@ -24,7 +24,8 @@ Search reporting against all sixteen PRISMA-S items:
 the one PubMed-internal duplicate has already been removed.)
 
 Embase, Web of Science and Cochrane CENTRAL were **not searched** — no
-institutional access. Trial registries not yet searched. See
+institutional access. ClinicalTrials.gov was searched as a separate
+register stream (below); WHO ICTRP remains outstanding. See
 `protocol/amendments.md`, Amendment 1; the coverage cost is carried in
 `METHODS.md` Section 11 rather than offset by a claim of equivalence.
 
@@ -42,6 +43,26 @@ except for preprint pairs, which always disagree on DOI by construction
 (Amendment 2).
 
 192 records were removed across 190 merge groups, of which 184 joined records from different databases and 6 were within a single database. Every cross-source merge was inspected; the non-exact title matches differ only by casing, dash style, an added word, or a conference-abstract prefix. Each surviving record carries its `merged_from` provenance, so any merge can be audited individually.
+
+### Identification from registers
+
+| register | n |
+|---|---:|
+| ClinicalTrials.gov | 694 |
+| WHO ICTRP | not searched |
+
+| study type | n |
+|---|---:|
+| interventional | 380 |
+| observational | 314 |
+
+These registrations are a separate identification stream under protocol
+Section 4.1 and are **not** part of the screening corpus counted above.
+A registration is not a publication: merging the streams would let a
+trial that was registered and never published count as evidence. WHO
+ICTRP was not searched: it has no endpoint callable unattended, and
+remains an outstanding manual step. See `protocol/amendments.md`,
+Amendment 6.
 
 ### Screening — counts WITHHELD
 

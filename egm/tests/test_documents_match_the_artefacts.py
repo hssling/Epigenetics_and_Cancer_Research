@@ -104,3 +104,55 @@ def test_the_instrument_hash_in_the_runbook_is_the_one_the_decisions_carry():
         f"the runbook does not cite the instrument hash {full[:8]}… that every "
         "screening decision was made under"
     )
+
+
+# --- the register stream -----------------------------------------------------
+
+REGISTRY = ROOT / "search/raw/ctgov_registry.json"
+
+
+@pytest.fixture(scope="module")
+def registry():
+    return json.loads(_require(REGISTRY).read_text(encoding="utf-8"))["records"]
+
+
+def test_documents_cite_the_registry_count_they_actually_have(registry):
+    written = f"{len(registry):,}"
+    for path in (STATUS, ROOT / "manuscript/PRISMA_S_search_report.md",
+                 ROOT / "protocol/amendments.md"):
+        text = _require(path).read_text(encoding="utf-8")
+        assert written in text, (
+            f"{path.relative_to(ROOT)} does not cite the registry count {written}"
+        )
+
+
+def test_no_registration_leaked_into_the_screening_corpus(registry, corpus_size):
+    """A registration is not a publication.
+
+    If these ever merged, a trial registered and never published would be
+    counted as evidence -- the inversion the register stream exists to expose.
+    """
+    corpus = json.loads(_require(CORPUS).read_text(encoding="utf-8"))["records"]
+    corpus_ids = {r["source_id"] for r in corpus} | {
+        m for r in corpus for m in r.get("merged_from", [])
+    }
+    nct_ids = {r["source_id"] for r in registry}
+
+    assert not (corpus_ids & nct_ids), "registrations found inside the corpus"
+    assert not any(i.startswith("NCT") for i in corpus_ids)
+    assert corpus_size == len(corpus)
+
+
+def test_every_registration_states_whether_its_dates_are_actual(registry):
+    """The distinction the unreported overlay turns on, checked on real data.
+
+    An ESTIMATED completion date recorded as ACTUAL would manufacture an
+    overdue trial out of an abandoned projection.
+    """
+    for record in registry:
+        if record["completion_date"] is not None:
+            assert record["completion_is_actual"] in (True, False, None)
+        if record["completion_is_actual"] is not None:
+            assert record["completion_date"] is not None, (
+                f"{record['source_id']} claims a date kind with no date"
+            )

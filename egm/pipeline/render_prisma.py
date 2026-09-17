@@ -56,6 +56,59 @@ def _merge_note(corpus_path: Optional[pathlib.Path]) -> str:
     )
 
 
+
+def _registry_block(registry_path: Optional[pathlib.Path]) -> str:
+    """Describe the register stream from its artefact, or say it is absent.
+
+    PRISMA 2020 counts registers in their own identification column, separate
+    from databases. The separation is not cosmetic here: a registration is not
+    a publication, and a trial registered but never published is the ABSENCE of
+    evidence. Folding these into the bibliographic corpus would let it be
+    counted as evidence -- the exact inversion the registry stream exists to
+    expose.
+
+    Only identification counts appear here. The "registered but unreported"
+    overlay is a finding about the evidence base, it needs the bibliographic
+    corpus to confirm, and findings wait for the Stage 0 gate like every other.
+    """
+    if registry_path is None or not pathlib.Path(registry_path).exists():
+        return (
+            "### Identification from registers\n"
+            "\n"
+            "**Not searched.** Protocol Section 4.1 commits to ClinicalTrials.gov\n"
+            "and WHO ICTRP; neither has been run.\n"
+        )
+
+    payload = json.loads(pathlib.Path(registry_path).read_text(encoding="utf-8"))
+    records = payload["records"]
+    by_type: dict[str, int] = {}
+    for record in records:
+        key = (record.get("study_type") or "unstated").lower()
+        by_type[key] = by_type.get(key, 0) + 1
+    rows = "\n".join(f"| {k} | {v:,} |" for k, v in sorted(by_type.items()))
+
+    return (
+        "### Identification from registers\n"
+        "\n"
+        "| register | n |\n"
+        "|---|---:|\n"
+        f"| ClinicalTrials.gov | {len(records):,} |\n"
+        "| WHO ICTRP | not searched |\n"
+        "\n"
+        f"| study type | n |\n"
+        "|---|---:|\n"
+        f"{rows}\n"
+        "\n"
+        "These registrations are a separate identification stream under protocol\n"
+        "Section 4.1 and are **not** part of the screening corpus counted above.\n"
+        "A registration is not a publication: merging the streams would let a\n"
+        "trial that was registered and never published count as evidence. WHO\n"
+        "ICTRP was not searched: it has no endpoint callable unattended, and\n"
+        "remains an outstanding manual step. See `protocol/amendments.md`,\n"
+        "Amendment 6.\n"
+    )
+
+
 def _screening_block(
     decisions_path: pathlib.Path,
     agreement_path: pathlib.Path,
@@ -123,6 +176,7 @@ def render(
     agreement_path: pathlib.Path,
     out_path: pathlib.Path,
     corpus_path: Optional[pathlib.Path] = None,
+    registry_path: Optional[pathlib.Path] = None,
 ) -> bool:
     """Write the flow document. Returns True if the screening counts were shown."""
     rows = _read_flow(identification_csv)
@@ -139,6 +193,7 @@ def render(
     europepmc = union - after_pubmed
 
     merge_note = _merge_note(corpus_path)
+    registry_md = _registry_block(registry_path)
     screening_md, summary = _screening_block(
         decisions_path, agreement_path, corpus
     )
@@ -169,7 +224,8 @@ Search reporting against all sixteen PRISMA-S items:
 the one PubMed-internal duplicate has already been removed.)
 
 Embase, Web of Science and Cochrane CENTRAL were **not searched** — no
-institutional access. Trial registries not yet searched. See
+institutional access. ClinicalTrials.gov was searched as a separate
+register stream (below); WHO ICTRP remains outstanding. See
 `protocol/amendments.md`, Amendment 1; the coverage cost is carried in
 `METHODS.md` Section 11 rather than offset by a claim of equivalence.
 
@@ -188,6 +244,7 @@ except for preprint pairs, which always disagree on DOI by construction
 
 {merge_note}
 
+{registry_md}
 {screening_md}
 ---
 
@@ -225,10 +282,12 @@ def main() -> None:
     parser.add_argument("--agreement", type=pathlib.Path, required=True)
     parser.add_argument("--out", type=pathlib.Path, required=True)
     parser.add_argument("--corpus", type=pathlib.Path, default=None)
+    parser.add_argument("--registry", type=pathlib.Path, default=None)
     args = parser.parse_args()
 
     shown = render(
-        args.identification, args.decisions, args.agreement, args.out, args.corpus
+        args.identification, args.decisions, args.agreement, args.out,
+        args.corpus, args.registry,
     )
     print(f"wrote {args.out}")
     print("screening counts: " + ("SHOWN (gate passed)" if shown else "WITHHELD (gate closed)"))

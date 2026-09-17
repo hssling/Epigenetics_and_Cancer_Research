@@ -21,6 +21,8 @@ this project's results.
 | PubMed search | Complete | `search/query_executed.txt`, `search/count_verification.md` |
 | Europe PMC search | Complete | `search/europepmc_count_verification.md` |
 | Deduplication | Complete — 9,786 records | `search/prisma_counts_combined_v3.csv` |
+| ClinicalTrials.gov registry search | Complete — 694 registrations, separate stream | `search/raw/ctgov_registry.json` |
+| WHO ICTRP registry search | NOT DONE — no unattended endpoint; outstanding as a **manual** step | Amendment 6 |
 | Corpus characterised | Complete | `search/corpus_description.md` |
 | Screening instrument | Frozen at v3, SHA-256 `03fc7b73…` | `pipeline/prompts/screening_v3.md` |
 | Instrument shakedown, 2 rounds | Complete, both superseded | Amendments 3 and 4 |

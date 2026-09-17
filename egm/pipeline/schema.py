@@ -54,6 +54,52 @@ class SearchRecord(BaseModel):
     query_hash: str
 
 
+class RegistryRecord(BaseModel):
+    """One trial registration, as retrieved from a study registry.
+
+    Deliberately NOT a `SearchRecord`. A registration is not a publication: it
+    has no journal, no author list, and no abstract, and treating it as a
+    bibliographic record would let a registered-but-never-published trial be
+    counted as evidence. Protocol Section 4.1 gives registry records a distinct
+    purpose -- identifying unpublished and ongoing studies, and populating a
+    "registered but unreported" overlay showing where evidence is in flight --
+    and they travel in their own PRISMA stream.
+
+    The `_is_actual` flags carry the distinction the overlay turns on. A
+    registration posted with an ESTIMATED completion date of 2019 says nothing
+    about whether the trial finished; only an ACTUAL date does. Collapsing the
+    two would manufacture "overdue" trials out of abandoned projections, so
+    the flag is required rather than inferred, and stays None when the registry
+    does not say which kind of date it holds.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_db: SourceDB
+    source_id: str
+    title: str
+    summary: Optional[str]
+    status: Optional[str]
+    study_type: Optional[str]
+    phases: list[str]
+    conditions: list[str]
+    interventions: list[str]
+    enrollment: Optional[int]
+    enrollment_is_actual: Optional[bool]
+    start_date: Optional[str]
+    primary_completion_date: Optional[str]
+    completion_date: Optional[str]
+    completion_is_actual: Optional[bool]
+    sponsor: Optional[str]
+    # Results posted in the registry itself, which is a legal obligation in
+    # several jurisdictions and distinct from publication in a journal.
+    has_results: bool
+    # PMIDs the registry itself links as reporting this trial's results.
+    result_pmids: list[str]
+    retrieved_at: str
+    query_hash: str
+
+
 class DedupedRecord(SearchRecord):
     """A record surviving deduplication, carrying its merge history."""
 

@@ -64,7 +64,8 @@ began:
 | Embase | **Europe PMC**, via the EBI REST API |
 | Web of Science | *not substituted at this stage* |
 | Cochrane CENTRAL | *not yet searched* |
-| ClinicalTrials.gov, WHO ICTRP | *not yet searched* |
+| ClinicalTrials.gov | searched 2026-09-17, 694 registrations (separate stream) |
+| WHO ICTRP | *not searched* — not callable unattended; outstanding as a manual step (Amendment 6) |
 
 Europe PMC was searched with an explicit `NOT SRC:MED` restriction — that is,
 restricted to records **not** already in MEDLINE. The reasoning is that MEDLINE
@@ -359,7 +360,9 @@ registered design rather than an inherent limitation of the question:
 2. **No PRESS peer review of the search.** The protocol commits to it; no
    information specialist was available. A self-assessment is not offered as a
    substitute.
-3. **Trial registries not yet searched.** ClinicalTrials.gov and WHO ICTRP remain
+3. **One of two trial registries searched.** ClinicalTrials.gov was searched
+on 2026-09-17 (694 registrations, a separate identification stream that does
+not join the screening corpus). WHO ICTRP remains
    outstanding, so the "registered but unreported" overlay the protocol describes
    cannot yet be populated.
 4. **Single human reviewer.** Mitigated by design — a quantified recall estimate
