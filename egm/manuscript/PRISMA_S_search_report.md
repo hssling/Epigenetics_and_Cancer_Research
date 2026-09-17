@@ -99,7 +99,7 @@ against PRESS is not a substitute and is not claimed as one.
 ## Managing records
 
 **15. Total records.** Reported in the PRISMA flow (`search/prisma_counts.csv`
-and `search/prisma_counts_combined_v2.csv`) and in
+and `search/prisma_counts_combined_v3.csv`) and in
 `manuscript/PRISMA_flow.md`. Per-database counts, the union, and duplicates
 removed by each rule are given separately rather than as a single total.
 

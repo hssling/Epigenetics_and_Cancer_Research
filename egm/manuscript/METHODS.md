@@ -5,11 +5,17 @@ Practice: An Evidence Gap Map*. Written to PRISMA 2020 with the PRISMA-S search
 extension (`PRISMA_S_search_report.md`) and Campbell Collaboration guidance on
 evidence and gap maps.
 
-**Scope of this draft.** Sections 1-4 describe work that has been executed and
-report real counts. Sections 6-10 describe the registered design for work that has
-**not yet been executed**; they are written in the future tense throughout and
-carry no results. The boundary is marked explicitly at Section 5. See
-`STATUS.md`.
+**Scope of this draft.** Sections 1-4 and 6 describe work that has been
+executed. Sections 7-9 describe the registered design for stages that have not
+run; they are written in the future tense and carry no results. The boundary is
+marked explicitly after Section 6.
+
+**No screening result in this document is reportable.** Title/abstract screening
+is complete, but the registered Stage 0 gate — Cohen's kappa >= 0.75 between the
+investigator and the model — has not been passed. `pipeline/report_screening.py`
+refuses to emit PRISMA screening counts without it, and `PRISMA_flow.md` is
+generated through that same gated function, so the figure withholds them too.
+See `STATUS.md`.
 
 ---
 
@@ -27,11 +33,19 @@ required describing it as something it is not. OSF Registries accepts the
 Generalized Systematic Review Registration template, which accommodates a
 map-plus-nested-synthesis design.
 
-Every deviation from the registered protocol enacted since registration is listed,
-dated, and given a rationale in `protocol/amendments.md`. Two have been enacted to
-date: the substitution of freely accessible databases for subscription databases
-the investigator cannot access (Section 2), and a narrowly scoped relaxation of
-the deduplication year rule for preprint pairs (Section 4).
+Every deviation from the registered protocol enacted since registration is
+listed, dated, and given a rationale in `protocol/amendments.md`. Five have been
+enacted to date: the substitution of freely accessible databases for subscription
+databases the investigator cannot access (Section 2); a narrowly scoped
+relaxation of the deduplication rules for preprint pairs (Section 4); two
+refinements of the screening instrument between calibration rounds, which
+protocol Section 5 Stage 0 explicitly anticipates (Section 6.1); and a reset of the
+recall-validation confidence strata, which the design spec directs be set after
+inspecting the observed distribution (Section 6.4).
+
+Each was decided and enacted before any eligibility result existed, so none can
+have been shaped by seeing which way a result came out. That ordering is recorded
+in the amendments file for each entry.
 
 ## 2. Information sources
 
@@ -92,7 +106,7 @@ reported against all sixteen PRISMA-S items in `PRISMA_S_search_report.md`.
 
 Record counts at every stage, per database and per deduplication rule, are given
 in `PRISMA_flow.md` and in the machine-readable
-`search/prisma_counts_combined_v2.csv`.
+`search/prisma_counts_combined_v3.csv`.
 
 Deduplication is automated and applied in a fixed order: exact normalised DOI,
 then PMID, then fuzzy title match (rapidfuzz ratio >= 95) additionally requiring an
@@ -114,22 +128,14 @@ its keep.
 
 Preprints are retained rather than excluded. The registered eligibility criteria
 turn on study design, not on peer-review status, and are silent on preprints.
-Consistent with the treatment of chain completeness (Section 6), peer-review
+Consistent with the treatment of chain completeness (Section 5), peer-review
 status is recorded as a coded variable so that any cell of the map can be
 recomputed with preprints excluded, rather than being decided by an unregistered
 exclusion applied here.
 
 ---
 
-## 5. — Boundary: nothing below this line has been executed —
-
-The remainder of this section describes the registered design for stages that have
-not run. It reports no results, because none exist. The reason screening has not
-begun, and the options for beginning it, are set out in `STATUS.md`.
-
----
-
-## 6. Eligibility criteria
+## 5. Eligibility criteria
 
 Eligible studies will be primary human studies (randomised trial, non-randomised
 trial, cohort, case-control, or cross-sectional), published 2015-2026 in English,
@@ -154,51 +160,130 @@ finding. Filtering on chain completeness would discard the mechanistic and
 prognostic literature that gives the translational gap its meaning; gap maps exist
 to report absence as a result, and this is the mechanism by which this one does.
 
-## 7. Screening
+## 6. Screening
 
 The investigator is the sole human reviewer. The design allocates human attention
 to errors that are unrecoverable and uses workflow structure for errors that are
 not.
 
-*Calibration.* 300 randomly drawn records, seeded and reproducible, screened blind
-by the investigator and independently by the AI screener. Cohen's kappa is
-computed with a confidence interval; disagreements are inspected; criteria and
-prompt are refined and the cycle repeats until kappa >= 0.75. The final kappa is
-reported.
+### 6.1 Instrument development (executed)
 
-*Title and abstract screening.* Structured output per record — decision
-(include / exclude / unclear), the single governing exclusion criterion where
-applicable, a free-text reason, and a calibrated confidence. Every `unclear`
-routes to the investigator. The screening instrument is frozen and its SHA-256
-recorded with every decision, alongside the model identifier, so that no decision
-can be attributed to a prompt it was not produced under. An API failure raises and
-is never recorded as a decision: a failure silently converted into an exclusion
-would corrupt both the PRISMA count and the recall estimate, undetectably.
+The screening instrument is a frozen text whose SHA-256 is recorded with every
+decision, alongside the model identifier, so that no decision can be attributed
+to a prompt it was not produced under.
 
-*Recall validation.* False positives are self-correcting — every AI-include
-proceeds to full text, where the investigator sees it. The unrecoverable error is
-the false negative. Validation therefore targets AI-**exclusions**: a 1,000-record
-sample stratified by confidence, deliberately over-sampling low-confidence
-exclusions, hand-screened blind.
+Two refinement rounds were run before the corpus was screened, on 300 randomly
+drawn records (seeded, reproducible). Protocol Section 5 Stage 0 explicitly
+provides for this ("eligibility criteria and AI prompt refined"). Each round is
+recorded as a dated amendment carrying the SHA-256 of both versions.
+
+Round 1 (`screening_v1`) exposed two structural defects. The instrument required
+one of five study designs but provided no exclusion criterion for a design on
+neither list, so case series, descriptive profiling series, in-silico
+re-analyses and Mendelian randomisation studies could not be excluded on any
+available ground. Separately, `ncrna_only` was unreachable: the instrument
+directs the screener to the first applicable criterion, and `no_measured_marker`
+always preceded it.
+
+Round 2 (`screening_v2`) fixed both but introduced two of its own, each
+identified independently by more than one screening run: it classified "tool
+development" as an ineligible *design* when it is a *purpose*, and it contained
+two mutually contradictory rules for secondary analyses of existing databases.
+
+`screening_v3` resolves those. Refinement stopped there: the registered gate is
+agreement with the **investigator**, and with no human screening there is no
+anchor against which further refinement could be checked. Continuing would have
+tuned the instrument toward the model's own judgement and called the result
+calibration. Rounds 1 and 2 are reported as instrument shakedowns, not
+calibrations, and their decisions are superseded.
+
+### 6.2 Title and abstract screening (executed)
+
+All 9,786 records were screened under `screening_v3`. Structured output per
+record: decision (include / exclude / unclear), the single governing exclusion
+criterion where applicable, a free-text reason specific to that record, and a
+calibrated confidence. Every `unclear` routes to the investigator.
+
+Decision coverage was verified exact against the corpus — every record decided
+once, none invented, none missed. An API failure raises and is never recorded as
+a decision: a failure silently converted into an exclusion would corrupt both the
+PRISMA count and the recall estimate, undetectably.
+
+A subset of 1,700 records was screened twice under the identical instrument by
+two different models. Raw agreement was 94.1%, with 1.4% of records differing on
+the consequential include-versus-exclude axis; the remainder involved `unclear`,
+which reaches a human either way. This is model-selection evidence and is
+reported as such. It is **not** calibration: it establishes that two models read
+the instrument similarly, not that either agrees with the investigator.
+
+**The screening counts are not reported in this document.** The registered
+Stage 0 gate has not been passed (Section 6.3). `pipeline/report_screening.py`
+refuses to emit them, and `PRISMA_flow.md` is generated by calling that same
+gated function, so the figure withholds them as well. The decisions exist, are
+committed, and are auditable record by record; they are provisional until
+validated.
+
+### 6.3 Calibration and the Stage 0 gate (NOT executed)
+
+The gate is Cohen's kappa >= 0.75, computed with a confidence interval, between
+the investigator's blind screening of the 300-record calibration sample and the
+model's decisions on the same records. The model side already exists, having been
+produced as part of the corpus run under the same instrument; only the human side
+is outstanding.
+
+No substitute exists. `agreement.compare` requires one human log and one AI log
+and refuses an AI-versus-AI comparison, so a second model run cannot stand in.
+
+If the gate is not met after revision, the registered contingency applies:
+narrowing to the exposure arm (4,029 records) as a recorded amendment.
+
+### 6.4 Recall validation (sample drawn; screening NOT executed)
+
+False positives are self-correcting — every AI-include proceeds to full text,
+where the investigator sees it. The unrecoverable error is the false negative.
+Validation therefore targets AI-**exclusions**: a 1,000-record sample stratified
+by confidence, deliberately over-sampling low-confidence exclusions,
+hand-screened blind.
+
+The sample is drawn (500 / 300 / 200 across three confidence strata, seed
+recorded, reproducible). The strata boundaries were reset from their registered
+placeholders before drawing, because the observed screener was more confident
+than those placeholders assumed: under them, one stratum held 16 of 3,767
+exclusions against an allocation that draws 500 from it. The sampling function
+refused to draw rather than silently returning 16. New boundaries were chosen on
+a single structural criterion — the sampling fraction must fall monotonically as
+confidence rises, since over-sampling the error-prone tail is the purpose of
+stratifying — and were fixed before the draw, before any human screening, and
+before any recall figure could exist.
 
 Because the sample is stratified, its raw proportions are not the population's.
 The over-sampled stratum is the one where a missed study is most likely to be
 hiding, so the raw sample rate is enriched for error and **overstates** the
 false-negative rate. Both the unweighted sample statistics and the
-stratum-weighted population estimate are reported, each labelled, with an exact
-Clopper-Pearson 95% interval and the full confusion matrix. If false negatives are
-found, the observed rate and its interval are reported as they stand and the
-sample is extended in blocks of 500; the software has no option to drop a block
-from the calculation. A recall estimate that comes out poor is reported, not
-re-run until it looks favourable.
+stratum-weighted population estimate will be reported, each labelled, with an
+exact Clopper-Pearson 95% interval and the full confusion matrix. If false
+negatives are found, the observed rate and its interval are reported as they
+stand and the sample is extended in blocks of 500; the software has no option to
+drop a block from the calculation. A recall estimate that comes out poor is
+reported, not re-run until it looks favourable.
 
-*Full text.* Gap-map coding assigns categorical fields and is AI-assisted with
-investigator verification of a stratified sample plus every study in any cell
-driving a headline claim. Extraction for meta-analysis is done manually by the
-investigator without exception, since that is where extraction error causes real
-harm.
+### 6.5 Full text (NOT executed)
 
-## 8. Data items
+Gap-map coding assigns categorical fields and is AI-assisted with investigator
+verification of a stratified sample plus every study in any cell driving a
+headline claim. Extraction for meta-analysis is done manually by the investigator
+without exception, since that is where extraction error causes real harm.
+
+---
+
+## — Boundary: nothing below this line has been executed —
+
+The remainder describes the registered design for stages that have not run. It
+reports no results, because none exist.
+
+---
+
+## 7. Data items
 
 One row per study, with dimensions stored independently of any display format:
 approach, care stage, condition domain, modality, chain link, marker class,
@@ -215,7 +300,7 @@ correction for the superseded pipeline in this repository, which filled
 unavailable effect sizes with the constant 0.3 and unavailable sample sizes with
 the constant 200.
 
-## 9. Risk of bias
+## 8. Risk of bias
 
 Assessed with the tool matching each study's design and modality: RoB 2 for
 randomised trials, ROBINS-I for non-randomised intervention studies, QUADAS-2 for
@@ -226,7 +311,7 @@ multiple-testing control, platform and normalisation reporting, and replication.
 Risk of bias is reported as a mapped dimension, so that a dense but
 methodologically weak cell is visually distinguishable from a dense and sound one.
 
-## 10. Synthesis
+## 9. Synthesis
 
 The evidence gap map is the primary output: approach by care stage, with condition
 domain, chain link, design, and risk of bias as filterable dimensions, generated
@@ -240,7 +325,7 @@ substituted for missing variance. The gate is pre-specified precisely so that th
 decision not to pool cannot be made after seeing which result pooling would
 produce.
 
-## 11. Limitations of the methods as executed
+## 10. Limitations of the methods as executed
 
 Stated here rather than deferred, because each is a shortfall against the
 registered design rather than an inherent limitation of the question:
@@ -262,3 +347,22 @@ registered design rather than an inherent limitation of the question:
 5. **Design-filter validation.** The primary-study design filter and the
    secondary-literature exclusion were written for this review and have not been
    externally validated against a reference set.
+6. **The screening instrument was revised twice against model behaviour, not
+   against the investigator.** Protocol Section 5 provides for refinement
+   between calibration rounds, but it assumes each round is anchored by human
+   screening. Rounds 1 and 2 were not: the defects they exposed were internal
+   incoherences in the instrument (an unreachable criterion, a missing one, two
+   contradictory rules), visible without a human comparator. That is why
+   refinement stopped at v3 rather than continuing. It remains true that the
+   instrument now in use has never been tested against the investigator's own
+   judgement, which is precisely what the Stage 0 gate exists to do.
+7. **Two models contributed decisions, and only one log is used.** 1,700 records
+   were screened on both; the reported log is single-model throughout, and
+   `single_ai_provenance` refuses a log spanning two models or two prompts. The
+   cross-model agreement (94.1%) is reported as model selection, not as a
+   substitute for calibration.
+8. **Screening ran through dispatched agents rather than a metered API.** The
+   schema, instrument hash, model identifier and per-record confidence are
+   recorded identically either way, and every batch was verified set-equal to
+   its input before collection. What this path does not give is token-level cost
+   accounting, so no per-record cost is reported.
