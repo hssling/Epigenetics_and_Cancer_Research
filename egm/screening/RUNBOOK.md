@@ -234,6 +234,28 @@ decision faster than 3 s on average); a log that fails is reported as failed.
 If false negatives are found, the sample is extended within the 1,000, never
 redrawn.
 
+## 9. Report the screening counts
+
+    python -m pipeline.report_screening \
+      --decisions screening/screening_decisions_sonnet.jsonl \
+      --validation screening/human_validation.jsonl \
+      --sample screening/validation_200.json \
+      --corpus search/raw/combined_corpus_v3.json \
+      --out screening/screening_counts.json
+
+    python -m pipeline.render_prisma \
+      --identification search/prisma_counts_combined_v3.csv \
+      --decisions screening/screening_decisions_sonnet.jsonl \
+      --validation screening/human_validation.jsonl \
+      --sample screening/validation_200.json \
+      --corpus search/raw/combined_corpus_v3.json \
+      --registry search/raw/ctgov_registry.json \
+      --out manuscript/PRISMA_flow.md
+
+Both recompute recall from the logs themselves and refuse until step 7 is
+complete and valid. `--sample` must be the registered Amendment 7 sample;
+`REGISTERED_VALIDATION_SAMPLE_SHA256` in `report_screening.py` pins it.
+
 Report whatever it says. The registration commits to publishing a poor recall
 estimate rather than re-running until it improves; `recall.py` has no parameter
 that would allow otherwise.

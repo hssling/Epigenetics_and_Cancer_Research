@@ -52,12 +52,19 @@ calibrated confidence, and a record-specific reason:
 | exclude | 3,767 | 38.5% |
 | unclear | 274 | 2.8% |
 
-**None of this may be reported.** The registered Stage 0 gate is Cohen's kappa
-≥ 0.75 between the **investigator** and the model (protocol Section 5), and no
-human screening has been done. `pipeline/report_screening.py` refuses to emit
-PRISMA screening counts without a passing agreement report, and that refusal
-cannot be satisfied by a second AI run — `agreement.compare` requires one human
-log and one AI log.
+**None of this may be reported.** The registered gate was Cohen's kappa ≥ 0.75
+against the investigator; Amendment 7 (OSF, 2026-10-29) withdrew it. The gate
+is now the investigator's blind recall validation of the 200-record sample, and
+it has not been done. `pipeline/report_screening.py` refuses to emit PRISMA
+screening counts until it has: it recomputes recall from the investigator's
+log, the AI log and the registered sample (pinned by record-id hash), and
+applies the same human-screener and timing checks the kappa gate applied. A
+second AI run cannot satisfy it. There is no recall threshold — a poor result
+opens the gate too, and travels with the counts.
+
+*(The three paragraphs below describe the kappa gate as built and attacked
+before Amendment 7. They are kept as the record; the hardening they describe
+is why the replacement recomputes from logs instead of reading a report.)*
 
 That gate was built *before* the screening run, deliberately. Nearly ten
 thousand finished decisions exert real pressure to accept them rather than
@@ -102,11 +109,10 @@ investigator, which is the only question the registered gate asks.
 > **Superseded 2026-10-29.** Amendment 7 withdrew Step 1 and reduced Step 2
 > to 200 records. The one remaining step is: screen
 > `screening/validation_200.json` blind (about 1–1.5 hours), then run
-> `pipeline.report_recall` against it — `screening/RUNBOOK.md`, steps 7–8.
-> Section 2 above still describes `report_screening.py` as gated on kappa;
-> that code has not yet been changed to match the amendment, so screening
-> counts remain unreportable until it is. The text below is kept as the
-> record of the registered sequence.
+> `pipeline.report_recall` against it — `screening/RUNBOOK.md`, steps 7–9.
+> Once that log exists, `report_screening.py` and `render_prisma.py` will
+> produce the screening counts with the recall estimate attached. The text
+> below is kept as the record of the registered sequence.
 
 **Step 1 — Calibration (~1.5–2.5 hours).** Screen the 300-record calibration
 sample blind in the local app:

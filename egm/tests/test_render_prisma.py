@@ -1,8 +1,9 @@
-"""The PRISMA figure must not be a way around the Stage 0 gate.
+"""The PRISMA figure must not be a way around the screening gate.
 
 A PRISMA diagram is the figure a reader trusts on sight. If a screening count
-could reach it without passing kappa, the gate in report_screening would be
-decorative — the number would simply appear in the figure instead.
+could reach it without the investigator's recall validation (Amendment 7), the
+gate in report_screening would be decorative — the number would simply appear
+in the figure instead.
 """
 import json
 
@@ -19,14 +20,16 @@ combined,identification_combined,9978,192,9786,"union"
 def _inputs(tmp_path):
     ident = tmp_path / "counts.csv"
     ident.write_text(CSV, encoding="utf-8")
-    return ident, tmp_path / "decisions.jsonl", tmp_path / "absent_agreement.json"
+    sample = tmp_path / "validation.json"
+    sample.write_text("[]", encoding="utf-8")
+    return ident, tmp_path / "decisions.jsonl", tmp_path / "absent_validation.jsonl", sample
 
 
 def test_gate_closed_withholds_every_screening_count(tmp_path):
-    ident, decisions, agreement = _inputs(tmp_path)
+    ident, decisions, human, sample = _inputs(tmp_path)
     out = tmp_path / "flow.md"
 
-    shown = render_prisma.render(ident, decisions, agreement, out)
+    shown = render_prisma.render(ident, decisions, human, sample, out)
 
     assert shown is False
     text = out.read_text(encoding="utf-8")
@@ -39,13 +42,13 @@ def test_gate_closed_withholds_every_screening_count(tmp_path):
 
 
 def test_the_document_says_why_it_is_withholding(tmp_path):
-    ident, decisions, agreement = _inputs(tmp_path)
+    ident, decisions, human, sample = _inputs(tmp_path)
     out = tmp_path / "flow.md"
-    render_prisma.render(ident, decisions, agreement, out)
+    render_prisma.render(ident, decisions, human, sample, out)
     text = out.read_text(encoding="utf-8")
 
-    assert "kappa" in text.lower()
-    assert "no agreement report" in text
+    assert "amendment 7" in text.lower()
+    assert "no investigator validation log" in text
 
 
 def test_merge_note_is_derived_not_asserted(tmp_path):
@@ -90,7 +93,8 @@ def test_gate_closed_block_does_not_claim_unverified_coverage(tmp_path):
     decisions.write_text("", encoding="utf-8")   # no decisions at all
     out = tmp_path / "flow.md"
 
-    render_prisma.render(ident, decisions, tmp_path / "absent.json", out)
+    render_prisma.render(ident, decisions, tmp_path / "absent.jsonl",
+                         tmp_path / "absent_sample.json", out)
     text = out.read_text(encoding="utf-8")
 
     assert "Every one has a recorded decision" not in text
@@ -114,10 +118,10 @@ def _registry(tmp_path, n_interventional=3, n_observational=2):
 
 
 def test_registry_counts_are_derived_from_the_artefact(tmp_path):
-    ident, decisions, agreement = _inputs(tmp_path)
+    ident, decisions, human, sample = _inputs(tmp_path)
     out = tmp_path / "flow.md"
 
-    render_prisma.render(ident, decisions, agreement, out, None,
+    render_prisma.render(ident, decisions, human, sample, out, None,
                          _registry(tmp_path, 3, 2))
     text = out.read_text(encoding="utf-8")
 
@@ -133,10 +137,10 @@ def test_registrations_are_never_added_to_the_corpus_count(tmp_path):
     694 registrations were folded into the 9,786 screened records, that absence
     would be counted as evidence.
     """
-    ident, decisions, agreement = _inputs(tmp_path)
+    ident, decisions, human, sample = _inputs(tmp_path)
     out = tmp_path / "flow.md"
 
-    render_prisma.render(ident, decisions, agreement, out, None,
+    render_prisma.render(ident, decisions, human, sample, out, None,
                          _registry(tmp_path, 3, 2))
     text = out.read_text(encoding="utf-8")
 
@@ -148,10 +152,10 @@ def test_registrations_are_never_added_to_the_corpus_count(tmp_path):
 
 def test_an_unsearched_register_says_so_rather_than_showing_nothing(tmp_path):
     """Silence would read as 'no registrations found', which is a different claim."""
-    ident, decisions, agreement = _inputs(tmp_path)
+    ident, decisions, human, sample = _inputs(tmp_path)
     out = tmp_path / "flow.md"
 
-    render_prisma.render(ident, decisions, agreement, out)
+    render_prisma.render(ident, decisions, human, sample, out)
     text = out.read_text(encoding="utf-8")
 
     assert "Identification from registers" in text
@@ -160,10 +164,10 @@ def test_an_unsearched_register_says_so_rather_than_showing_nothing(tmp_path):
 
 def test_ictrp_is_named_as_unsearched_even_when_ctgov_ran(tmp_path):
     """A half-executed registry commitment must not read as a complete one."""
-    ident, decisions, agreement = _inputs(tmp_path)
+    ident, decisions, human, sample = _inputs(tmp_path)
     out = tmp_path / "flow.md"
 
-    render_prisma.render(ident, decisions, agreement, out, None,
+    render_prisma.render(ident, decisions, human, sample, out, None,
                          _registry(tmp_path))
     text = out.read_text(encoding="utf-8")
 
@@ -174,12 +178,12 @@ def test_the_overlay_finding_stays_out_of_the_prisma_figure(tmp_path):
     """Identification counts are ungated; findings are not.
 
     'Registered but unreported' is a claim about the evidence base and needs
-    the bibliographic corpus to confirm. It waits for the Stage 0 gate.
+    the bibliographic corpus to confirm. It waits for the screening gate.
     """
-    ident, decisions, agreement = _inputs(tmp_path)
+    ident, decisions, human, sample = _inputs(tmp_path)
     out = tmp_path / "flow.md"
 
-    render_prisma.render(ident, decisions, agreement, out, None,
+    render_prisma.render(ident, decisions, human, sample, out, None,
                          _registry(tmp_path))
     text = out.read_text(encoding="utf-8").lower()
 

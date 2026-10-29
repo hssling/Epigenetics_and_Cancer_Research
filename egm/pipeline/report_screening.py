@@ -1,173 +1,118 @@
-"""Report the screening stage of the PRISMA flow — behind the Stage 0 gate.
+"""Report the screening stage of the PRISMA flow — behind the screening gate.
 
-Protocol Section 5 makes full screening conditional: "Proceed only when kappa
->= 0.75." `AgreementReport` already computes `gate_met`, but nothing consumed
-it, so the gate was a matter of resolve rather than a mechanism.
+The AI screening pass can be run before any human validation exists — nothing
+stops it, and the decisions it produces are perfectly well-formed. Thousands of
+completed decisions then exert real pressure to report them as they stand. This
+module is where that pressure is refused: the screening counts cannot be
+produced at all until the investigator's blind validation exists, so an
+unvalidated pass yields no reportable number.
 
-That distinction matters more here than it looks. The AI screening pass can be
-run before any human calibration exists — nothing stops it, and the decisions
-it produces are perfectly well-formed. Thousands of completed decisions then
-exert real pressure to accept them rather than re-screen if the kappa later
-comes out below the gate. This module is where that pressure is refused: the
-screening counts cannot be produced at all without an agreement report that
-passes, so an ungated pass yields no reportable number.
+The gate was registered as Cohen's kappa >= 0.75 on a 300-record calibration
+sample. Amendment 7 (OSF 3xtf2, approved 2026-10-29) withdrew it after a
+calibration log failed the timing check, and made recall validation of 200
+AI exclusions the investigator's verification step. The gate is now that
+validation.
 
-It is deliberately impossible to satisfy this check with AI decisions alone.
-`compare()` refuses a human-vs-human comparison and requires one human log and
-one AI log, so a second model run cannot stand in for the investigator.
+It is recomputed here from its inputs, not read from a report. The kappa gate
+read an `AgreementReport` JSON and an audit opened it with a hand-typed one;
+the fix was a stack of consistency and hash checks around a file that need not
+have been trusted in the first place. Recomputing from the logs leaves the
+human log itself as the only thing to forge, and `recall.validate_recall`
+applies the same timing check to it that the kappa gate applied.
 """
 import argparse
 import hashlib
 import json
 import pathlib
-from typing import Any, Optional
+from typing import Any
 
-from pipeline.agreement import AgreementReport
+from pipeline.draw_sample import stratum_sizes
 from pipeline.prisma import PrismaStage
+from pipeline.recall import RecallReport, validate_recall
 from pipeline.screen_schema import read_decisions, single_ai_provenance
+
+# The Amendment 7 sample, `screening/validation_200.json`, identified by its
+# record ids (sorted, newline-joined) rather than its bytes, so a CRLF checkout
+# does not break the pin. Extending the sample under the registered rule
+# changes this value; that is a deliberate edit with an amendments.md entry,
+# never something an operator does by pointing --sample at another file.
+REGISTERED_VALIDATION_SAMPLE_SHA256 = (
+    "da38e8b98efa21a4d15ac413702c77b8e8514ab197e5aba5064c720311681c0b"
+)
 
 
 class GateNotPassed(Exception):
-    """Raised when screening results are requested before Stage 0 passes."""
+    """Raised when screening results are requested before validation exists."""
 
 
-def load_agreement(path: pathlib.Path) -> AgreementReport:
-    path = pathlib.Path(path)
-    if not path.exists():
-        raise GateNotPassed(
-            f"no agreement report at {path}. The registered Stage 0 gate is "
-            "Cohen's kappa >= 0.75 between the investigator and the model "
-            "(protocol Section 5). Until the investigator has screened the "
-            "calibration sample blind, no kappa exists and no screening count "
-            "may be reported."
-        )
-    return AgreementReport(**json.loads(path.read_text(encoding="utf-8")))
+def sample_ids_sha256(sample_path: pathlib.Path) -> str:
+    records = json.loads(pathlib.Path(sample_path).read_text(encoding="utf-8"))
+    ids = sorted(r["record_id"] for r in records)
+    return hashlib.sha256("\n".join(ids).encode("utf-8")).hexdigest()
 
 
-def _kappa_from_confusion(confusion: dict[str, int]) -> tuple[int, float, float]:
-    """Recompute (n, observed agreement, kappa) from the confusion matrix alone.
+def assert_recall_validated(
+    decisions_path: pathlib.Path,
+    validation_path: pathlib.Path,
+    sample_path: pathlib.Path,
+    registered_sample_sha256: str = REGISTERED_VALIDATION_SAMPLE_SHA256,
+) -> RecallReport:
+    """Return the recall report if the investigator's validation is complete.
 
-    Keys are "human_label->ai_label". Reconstructing the marginals from the
-    matrix lets the gate check the report against itself instead of taking its
-    word for it.
+    There is no threshold on the result. Protocol Section 5: "A recall
+    estimate that comes out poor is reported, not re-run until favourable."
+    A gate that opened only on good recall would let the investigator's
+    finding of missed studies hide the screening counts it qualifies; instead
+    the estimate travels with the counts wherever they are reported.
     """
-    n = sum(confusion.values())
-    if n == 0:
-        raise GateNotPassed("agreement report has an empty confusion matrix")
-
-    agree = sum(v for k, v in confusion.items() if k.split("->")[0] == k.split("->")[1])
-    observed = agree / n
-
-    human_counts: dict[str, int] = {}
-    ai_counts: dict[str, int] = {}
-    for key, count in confusion.items():
-        h, a = key.split("->")
-        human_counts[h] = human_counts.get(h, 0) + count
-        ai_counts[a] = ai_counts.get(a, 0) + count
-
-    labels = set(human_counts) | set(ai_counts)
-    expected = sum(
-        (human_counts.get(l, 0) / n) * (ai_counts.get(l, 0) / n) for l in labels
-    )
-    if expected == 1.0:
-        return n, observed, 1.0
-    return n, observed, (observed - expected) / (1 - expected)
-
-
-def assert_gate(agreement: AgreementReport) -> float:
-    """Return kappa if the Stage 0 gate is genuinely passed; raise otherwise.
-
-    This does NOT simply read `gate_met`. An earlier version did, and that was
-    the whole vulnerability: an agreement report is a plain JSON file, and the
-    only thing standing between a fabricated one and a published PRISMA table
-    was a boolean someone could type. An adversarial audit opened the gate with
-    a hand-written report carrying kappa 0.10, n 1, an empty confusion matrix
-    and a made-up model name.
-
-    Three things are checked here, in order:
-
-      1. The report is internally consistent. n, observed agreement and kappa
-         are recomputed from the confusion matrix and must match what the
-         report claims. A forger must now supply a confusion matrix that really
-         does produce the kappa they want -- which means constructing plausible
-         paired decisions, not editing one field.
-      2. The inputs still hash to what was recorded. The human and AI logs the
-         report names must exist and be unchanged.
-      3. Only then, whether the gate was met.
-
-    None of this defeats someone determined to fabricate a 300-record human
-    log; nothing in a local filesystem can. It raises forgery from a one-token
-    edit to a deliberate, multi-file act that leaves the fabricated log on disk
-    where a reader can inspect it.
-    """
-    n, observed, kappa = _kappa_from_confusion(agreement.confusion)
-
-    if n != agreement.n:
+    validation_path = pathlib.Path(validation_path)
+    sample_path = pathlib.Path(sample_path)
+    if not validation_path.exists():
         raise GateNotPassed(
-            f"agreement report is internally inconsistent: it claims n="
-            f"{agreement.n} but its confusion matrix totals {n}. A report whose "
-            "own numbers disagree cannot open the gate."
+            f"no investigator validation log at {validation_path}. Under "
+            "Amendment 7 the screening counts are reportable once the "
+            "investigator has screened the 200-record validation sample blind "
+            "(screening/RUNBOOK.md, step 7). Until then the AI decisions are "
+            "provisional and no screening count may be reported."
         )
-    if abs(observed - agreement.observed_agreement) > 1e-9:
+    if not sample_path.exists():
+        raise GateNotPassed(f"no validation sample at {sample_path}")
+
+    actual = sample_ids_sha256(sample_path)
+    if actual != registered_sample_sha256:
         raise GateNotPassed(
-            f"agreement report is internally inconsistent: claims observed "
-            f"agreement {agreement.observed_agreement:.6f}, confusion matrix "
-            f"gives {observed:.6f}."
-        )
-    if abs(kappa - agreement.kappa) > 1e-6:
-        raise GateNotPassed(
-            f"agreement report is internally inconsistent: claims kappa "
-            f"{agreement.kappa:.6f}, confusion matrix gives {kappa:.6f}. The "
-            "gate is decided by the recomputed value, never by the stored one."
+            f"{sample_path} is not the registered validation sample (record-id "
+            f"sha256 {actual[:12]}, registered {registered_sample_sha256[:12]}). "
+            "Recall is estimated on the sample Amendment 7 fixed, not on "
+            "whichever sample is supplied."
         )
 
-    for role, path_str, expected_hash in (
-        ("human", agreement.human_path, agreement.human_sha256),
-        ("AI", agreement.ai_path, agreement.ai_sha256),
-    ):
-        path = pathlib.Path(path_str)
-        if not path.exists():
-            raise GateNotPassed(
-                f"the {role} decision log this report was computed from "
-                f"({path_str}) is missing. The gate cannot be verified against "
-                "inputs that are not there."
-            )
-        actual = hashlib.sha256(path.read_bytes()).hexdigest()
-        if actual != expected_hash:
-            raise GateNotPassed(
-                f"the {role} decision log ({path_str}) has changed since this "
-                f"agreement report was computed (sha256 {actual[:12]} vs "
-                f"{expected_hash[:12]}). Recompute the agreement report."
-            )
-
-    if kappa < agreement.gate:
-        raise GateNotPassed(
-            f"Stage 0 gate NOT passed: recomputed kappa={kappa:.3f} against a "
-            f"gate of {agreement.gate}, on n={n}. Protocol Section 5 permits "
-            "refining the instrument and re-screening; it does not permit "
-            "reporting screening results from a run that failed the gate."
+    ids = {r["record_id"] for r in
+           json.loads(sample_path.read_text(encoding="utf-8"))}
+    try:
+        return validate_recall(
+            validation_path, decisions_path, ids, stratum_sizes(decisions_path)
         )
-    if not agreement.gate_met:
-        raise GateNotPassed(
-            f"report records gate_met=False despite a recomputed kappa of "
-            f"{kappa:.3f}; refusing to second-guess it. Recompute the report."
-        )
-    return kappa
+    except ValueError as exc:
+        raise GateNotPassed(f"recall validation is not valid: {exc}") from exc
 
 
 def screening_stage(
     decisions_path: pathlib.Path,
-    agreement_path: pathlib.Path,
+    validation_path: pathlib.Path,
+    sample_path: pathlib.Path,
     identified: int,
+    registered_sample_sha256: str = REGISTERED_VALIDATION_SAMPLE_SHA256,
 ) -> tuple[PrismaStage, dict[str, Any]]:
-    """Build the screening PRISMA stage. Raises unless Stage 0 passed.
+    """Build the screening PRISMA stage. Raises unless validation is complete.
 
     `identified` is the number of records entering screening — the combined
     corpus size — passed in rather than inferred, so a decision log that
     covers only part of the corpus cannot silently redefine the denominator.
     """
-    agreement = load_agreement(agreement_path)
-    kappa = assert_gate(agreement)
+    recall = assert_recall_validated(
+        decisions_path, validation_path, sample_path, registered_sample_sha256
+    )
 
     decisions = [d for d in read_decisions(decisions_path) if d.stage == "screening"]
     if not decisions:
@@ -207,7 +152,12 @@ def screening_stage(
         excluded=counts["exclude"],
         reason=(
             f"excluded at title/abstract ({reason_parts}); "
-            f"kappa={kappa:.3f} vs investigator on n={agreement.n}; "
+            f"recall validated on n={recall.n_validated} AI exclusions screened "
+            f"blind by the investigator, false negatives "
+            f"{recall.false_negatives} of {recall.n_validated}, weighted FN "
+            f"rate {recall.weighted_fn_rate:.4f} (95% CI "
+            f"{recall.weighted_fn_rate_ci_low:.4f}-"
+            f"{recall.weighted_fn_rate_ci_high:.4f}); "
             f"model={model_id}; prompt={prompt_sha256[:12]}"
         ),
     )
@@ -215,8 +165,13 @@ def screening_stage(
         "identified": identified,
         **counts,
         "criteria": criteria,
-        "kappa": kappa,
-        "kappa_n": agreement.n,
+        "recall_n": recall.n_validated,
+        "recall_false_negatives": recall.false_negatives,
+        "recall_fn_rate_ci_high": recall.fn_rate_ci_high,
+        "recall_weighted_fn_rate": recall.weighted_fn_rate,
+        "recall_weighted_fn_rate_ci_low": recall.weighted_fn_rate_ci_low,
+        "recall_weighted_fn_rate_ci_high": recall.weighted_fn_rate_ci_high,
+        "recall_implied_missed_high": recall.implied_missed_high,
         "model_id": model_id,
         "prompt_sha256": prompt_sha256,
     }
@@ -249,10 +204,18 @@ def corpus_size(corpus_path: pathlib.Path) -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Screening PRISMA counts (requires a passing Stage 0 gate)"
+        description="Screening PRISMA counts (requires the investigator's "
+        "recall validation, Amendment 7)"
     )
     parser.add_argument("--decisions", type=pathlib.Path, required=True)
-    parser.add_argument("--agreement", type=pathlib.Path, required=True)
+    parser.add_argument(
+        "--validation", type=pathlib.Path, required=True,
+        help="the investigator's blind validation log (screen_app output)",
+    )
+    parser.add_argument(
+        "--sample", type=pathlib.Path, required=True,
+        help="the registered validation sample, screening/validation_200.json",
+    )
     parser.add_argument(
         "--corpus", type=pathlib.Path, required=True,
         help="the screened corpus; its record count is the PRISMA denominator",
@@ -261,13 +224,15 @@ def main() -> None:
     args = parser.parse_args()
 
     stage, summary = screening_stage(
-        args.decisions, args.agreement, corpus_size(args.corpus)
+        args.decisions, args.validation, args.sample, corpus_size(args.corpus)
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     for key in ("identified", "include", "exclude", "unclear"):
         print(f"{key}: {summary[key]}")
-    print(f"kappa: {summary['kappa']:.3f} (n={summary['kappa_n']})")
+    print(f"recall: {summary['recall_false_negatives']} false negatives in "
+          f"{summary['recall_n']}; weighted FN rate upper bound "
+          f"{summary['recall_weighted_fn_rate_ci_high']:.4%}")
 
 
 if __name__ == "__main__":
