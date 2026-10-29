@@ -115,11 +115,13 @@ def _screening_block(
     validation_path: pathlib.Path,
     sample_path: pathlib.Path,
     identified: int,
+    extension_path: Optional[pathlib.Path] = None,
 ) -> tuple[str, Optional[dict]]:
     """Return (markdown, summary). Summary is None when the gate is closed."""
     try:
         _, summary = screening_stage(
-            decisions_path, validation_path, sample_path, identified
+            decisions_path, validation_path, sample_path, identified,
+            extension_path=extension_path,
         )
     except GateNotPassed as exc:
         # Do not assert coverage that has not been checked. An audit found
@@ -191,6 +193,7 @@ def render(
     out_path: pathlib.Path,
     corpus_path: Optional[pathlib.Path] = None,
     registry_path: Optional[pathlib.Path] = None,
+    extension_path: Optional[pathlib.Path] = None,
 ) -> bool:
     """Write the flow document. Returns True if the screening counts were shown."""
     rows = _read_flow(identification_csv)
@@ -209,7 +212,7 @@ def render(
     merge_note = _merge_note(corpus_path)
     registry_md = _registry_block(registry_path)
     screening_md, summary = _screening_block(
-        decisions_path, validation_path, sample_path, corpus
+        decisions_path, validation_path, sample_path, corpus, extension_path
     )
 
     body = f"""# PRISMA 2020 flow
@@ -298,12 +301,13 @@ def main() -> None:
     parser.add_argument("--out", type=pathlib.Path, required=True)
     parser.add_argument("--corpus", type=pathlib.Path, default=None)
     parser.add_argument("--registry", type=pathlib.Path, default=None)
+    parser.add_argument("--extension", type=pathlib.Path, default=None)
     args = parser.parse_args()
 
     shown = render(
         args.identification, args.decisions, args.validation, args.sample,
         args.out,
-        args.corpus, args.registry,
+        args.corpus, args.registry, args.extension,
     )
     print(f"wrote {args.out}")
     print("screening counts: " + ("SHOWN (recall validated)" if shown else "WITHHELD (gate closed)"))

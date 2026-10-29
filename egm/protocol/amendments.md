@@ -18,6 +18,7 @@ what existed at that point and what did not.
 | 5 | 2026-09-17 | 5 Screening, Stage 2 | Recall-validation confidence strata reset from (<0.5, <0.8) to (<0.66, <0.81) | The registered boundaries left only 16 of 3,767 exclusions in the stratum the design draws 500 from. See Amendment 5. |
 | 6 | 2026-09-17 | 4.1 Information sources | ClinicalTrials.gov searched as a separate registry stream (694 registrations). WHO ICTRP **not** searched. | The registered registry search was outstanding. ICTRP has no endpoint callable unattended; it remains an outstanding manual step. See Amendment 6. |
 | 7 | 2026-10-29 | 5 Screening, Stages 0 and 2; 9; 11 | Blind kappa calibration gate withdrawn. Screening becomes AI-led with investigator verification. Recall validation reduced from 1,000 to 200 blind-screened AI-exclusions. | The investigator will not do the registered 300-record blind calibration. A screening design that can actually be executed, and is reported as what it is, is preferable to one that is registered and not carried out. See Amendment 7. |
+| 8 | 2026-10-29 (DRAFT) | 5 Screening, Stage 2 | Extension rule fixed: one or more false negatives in the 200 triggers blind screening of the remaining 800 of `validation_1000.json`, in a single step; recall is then reported on the full 1,000. | Amendment 7 kept "extend the sample" but left the step and the stopping point unspecified, which would have let them be chosen after seeing the result. See Amendment 8. |
 
 ---
 
@@ -633,3 +634,93 @@ design, allocation or seed has changed.
 > false-negative rate is reported with an exact 95% CI alongside the bound the
 > registered design would have given. Full rationale and costs:
 > `egm/protocol/amendments.md`, Amendment 7.
+
+---
+
+## Amendment 8 (DRAFT, 2026-10-29): the recall-validation extension rule
+
+> **Status: DRAFT — not filed on OSF.** Decided before any of the 200
+> validation records has been screened by the investigator. No human
+> validation log exists.
+
+### What the registration says, and what Amendment 7 left open
+
+Protocol Section 5, Stage 2: "If false negatives *are* found, the observed
+rate and its exact CI are reported as-is, and the sample is extended to tighten
+the estimate." Amendment 7 reduced the base sample to 200 and kept that clause
+("extended within the already-drawn 1,000"). Neither says **how many** records
+an extension adds, or **when it stops**.
+
+Left open, both would be decided after the false negatives had been seen. An
+extension that proceeds in small batches and stops once the interval "looks
+tight enough" ends early exactly when the estimate has drifted favourably, so
+the reported rate is biased downward even if every individual screening
+decision is honest. Fixing the rule now, before the first record is screened,
+removes that freedom.
+
+### The rule
+
+- **Trigger:** one or more false negatives among the 200 records of
+  `screening/validation_200.json` (a human `include` or `unclear` on a record
+  the AI excluded, as `recall.validate_recall` already counts them).
+- **No trigger:** if there are zero false negatives, there is no extension.
+  The 200-record estimate is final, and the remaining 800 are not screened for
+  recall validation.
+- **Extension, if triggered:** the investigator screens, blind and under the
+  same conditions as the 200 (`screen_app`, 3-second floor, no AI decision
+  shown), **all remaining 800 records** of `screening/validation_1000.json`
+  in a single step: 400 / 240 / 160 across the low / mid / high strata.
+  `validation_1000.json` was drawn on 2026-09-17 by the registered allocation
+  (500 / 300 / 200) and the 200 are a stratified subsample of it, so the union
+  is exactly the registered 1,000. It is identified by its sorted-record-id
+  SHA-256, `54f0b35e59e5afe2d678a071b5a85758bc379ba8c1908be00a94fc5813689181`,
+  fixed here.
+- **No intermediate stopping point.** There is no option to screen part of
+  the 800 and stop. A partial extension is treated as an incomplete
+  validation, as a partial 200 already is.
+- **Reporting, if triggered:** the recall estimate reported with the
+  screening counts is the one computed on all 1,000. The 200-record result is
+  reported as well, labelled as the first stage that triggered the extension.
+  Both unweighted and stratum-weighted estimates, each with an exact
+  Clopper-Pearson 95% interval, as Amendment 7 specifies.
+- **Between the two stages:** if the 200 trigger the extension, the screening
+  counts are not withheld while the 800 are screened; finding missed studies
+  must not be what hides the result. They are produced with the 200-record
+  estimate and marked **provisional** (`report_screening`,
+  `recall_extension_owed`), and no output is submitted while that mark
+  stands. An extension supplied when the 200 found no false negative is
+  refused.
+
+### Why one step to the full 1,000
+
+A single step to the registered sample has no stopping decision left in it,
+needs no further draw or ordering, and lands on a design whose properties
+were registered: with zero false negatives in 1,000, the stratum-weighted
+upper bound is 1.38%, about 52 studies. Smaller steps would save effort only
+in the branch where the first steps happen to look good — which is the branch
+that biases the estimate.
+
+The cost is effort: 800 further records, about 3–7 hours at 15–30 seconds a
+record, in the case where it is triggered.
+
+### A two-stage rule is not a fixed-sample design
+
+The intervals are computed as if each sample size had been fixed in advance.
+Under a rule that extends only after a false negative has been seen, that is
+an approximation, and the manuscript says so. In the extended branch the
+1,000-record sample contains at least one false negative by construction, so
+its estimate leans high, which is the conservative direction for a recall
+claim. In the unextended branch the result is the Amendment 7 design exactly.
+
+### Text for the OSF update form
+
+> **Amendment 8 — recall-validation extension rule.** Fixed before any
+> validation record was screened. If the investigator's blind screening of
+> the 200 AI-excluded records finds one or more false negatives, the
+> remaining 800 records of the already-drawn 1,000-record sample (stratified
+> 400/240/160) are screened blind in a single step, with no intermediate
+> stopping point, and recall is reported on the full 1,000 alongside the
+> 200-record first stage. Until the extension is complete, any screening
+> counts are reported as provisional and nothing is submitted. If none is
+> found, there is no extension and the 200-record estimate is final. Full
+> rationale: `egm/protocol/amendments.md`, Amendment 8.

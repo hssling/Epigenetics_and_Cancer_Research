@@ -231,8 +231,21 @@ Amendment 7 permits.
 
 The human log must pass the same timing check as the calibration gate (no
 decision faster than 3 s on average); a log that fails is reported as failed.
-If false negatives are found, the sample is extended within the 1,000, never
-redrawn.
+
+**If `false_negatives` is 1 or more, Amendment 8 requires the extension**
+(and forbids it at 0). Screen the rest of the 1,000 blind, appending to the
+same log. `screen_app` skips the 200 already decided, which leaves the other
+800 (400 / 240 / 160):
+
+    python -m pipeline.screen_app \
+      --sample screening/validation_1000.json \
+      --out screening/human_validation.jsonl \
+      --stage validation
+
+All 800, in one step; a partly screened extension is refused the same way a
+partial 200 is. Then pass `--extension screening/validation_1000.json` to both
+commands in step 9. Recall of record is then the 1,000; the 200 is reported
+beside it as the first stage. Never redraw.
 
 ## 9. Report the screening counts
 
@@ -255,6 +268,7 @@ redrawn.
 Both recompute recall from the logs themselves and refuse until step 7 is
 complete and valid. `--sample` must be the registered Amendment 7 sample;
 `REGISTERED_VALIDATION_SAMPLE_SHA256` in `report_screening.py` pins it.
+`--extension`, when used, is pinned by `REGISTERED_EXTENSION_SAMPLE_SHA256`.
 
 Report whatever it says. The registration commits to publishing a poor recall
 estimate rather than re-running until it improves; `recall.py` has no parameter

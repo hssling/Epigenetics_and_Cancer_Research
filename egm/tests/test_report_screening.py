@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from pipeline.report_screening import (
+    REGISTERED_EXTENSION_SAMPLE_SHA256,
     REGISTERED_VALIDATION_SAMPLE_SHA256,
     GateNotPassed,
     sample_ids_sha256,
@@ -71,11 +72,26 @@ def _screen(tmp_path, sample, step_seconds=20, include=(), only=None):
     return human
 
 
-def _stage(decisions, human, sample, identified, registered=None):
+def _stage(decisions, human, sample, identified, registered=None,
+           extension=None, registered_extension=None):
     return screening_stage(
         decisions, human, sample, identified,
         registered_sample_sha256=registered or sample_ids_sha256(sample),
+        extension_path=extension,
+        registered_extension_sha256=registered_extension or (
+            sample_ids_sha256(extension) if extension else "0" * 64
+        ),
     )
+
+
+def _extension(tmp_path, first=40, last=100):
+    """The Amendment 8 extension: every drawn exclusion, the first stage included."""
+    path = tmp_path / "validation_extension.json"
+    path.write_text(json.dumps([
+        {"record_id": f"egm-{i:06d}", "title": "T", "abstract": "A"}
+        for i in range(first, last)
+    ]), encoding="utf-8")
+    return path
 
 
 # --- the gate itself --------------------------------------------------------
@@ -124,6 +140,12 @@ def test_the_pinned_sample_is_the_committed_amendment_7_draw():
     assert sample_ids_sha256(committed) == REGISTERED_VALIDATION_SAMPLE_SHA256
 
 
+def test_the_extension_pin_is_the_committed_1000_draw():
+    """Amendment 8 fixed the extension as validation_1000.json, by this hash."""
+    committed = ROOT / "screening/validation_1000.json"
+    assert sample_ids_sha256(committed) == REGISTERED_EXTENSION_SAMPLE_SHA256
+
+
 def test_the_pin_ignores_line_endings_and_record_order(tmp_path):
     """Git may check the sample out with CRLF; the pin must survive that."""
     a, b = tmp_path / "a.json", tmp_path / "b.json"
@@ -149,6 +171,73 @@ def test_false_negatives_do_not_withhold_the_counts(tmp_path):
 
     assert summary["recall_false_negatives"] == 2
     assert "false negatives 2 of 30" in stage.reason
+    # Amendment 8: reported, but not as final while the extension is owed
+    assert summary["recall_extension_owed"] is True
+    assert stage.reason.count("PROVISIONAL") == 1
+
+
+def test_a_clean_first_stage_is_final_and_owes_no_extension(tmp_path):
+    decisions, sample, n = _world(tmp_path)
+    human = _screen(tmp_path, sample)
+    stage, summary = _stage(decisions, human, sample, n)
+    assert summary["recall_extension_owed"] is False
+    assert summary["recall_extended"] is False
+    assert "PROVISIONAL" not in stage.reason
+
+
+# --- Amendment 8: the extension ---------------------------------------------
+
+
+def test_a_triggered_extension_reports_recall_on_the_whole_sample(tmp_path):
+    """One false negative in the first 30 -> all 60 screened -> recall on 60."""
+    decisions, sample, n = _world(tmp_path)
+    extension = _extension(tmp_path)
+    human = _screen(tmp_path, extension, include={"egm-000040", "egm-000090"})
+
+    stage, summary = _stage(decisions, human, sample, n, extension=extension)
+
+    assert summary["recall_n"] == 60
+    assert summary["recall_false_negatives"] == 2
+    assert summary["recall_extended"] is True
+    assert summary["first_stage_n"] == 30
+    assert summary["first_stage_false_negatives"] == 1
+    assert "first stage of 1 of 30" in stage.reason
+
+
+def test_an_extension_the_first_stage_did_not_trigger_is_refused(tmp_path):
+    """Zero false negatives makes the first stage final; a second estimate
+    would leave the choice of which to report to whoever runs this."""
+    decisions, sample, n = _world(tmp_path)
+    extension = _extension(tmp_path)
+    human = _screen(tmp_path, extension, include={"egm-000090"})
+    with pytest.raises(GateNotPassed, match="no extension"):
+        _stage(decisions, human, sample, n, extension=extension)
+
+
+def test_a_partially_screened_extension_is_refused(tmp_path):
+    """Amendment 8 has no intermediate stopping point."""
+    decisions, sample, n = _world(tmp_path)
+    extension = _extension(tmp_path)
+    human = _screen(tmp_path, extension, include={"egm-000040"}, only=45)
+    with pytest.raises(GateNotPassed, match="partial sample"):
+        _stage(decisions, human, sample, n, extension=extension)
+
+
+def test_an_extension_other_than_the_registered_one_is_refused(tmp_path):
+    decisions, sample, n = _world(tmp_path)
+    extension = _extension(tmp_path)
+    human = _screen(tmp_path, extension, include={"egm-000040"})
+    with pytest.raises(GateNotPassed, match="not the registered extension"):
+        _stage(decisions, human, sample, n, extension=extension,
+               registered_extension="0" * 64)
+
+
+def test_an_extension_that_drops_first_stage_records_is_refused(tmp_path):
+    decisions, sample, n = _world(tmp_path)
+    human = _screen(tmp_path, _extension(tmp_path), include={"egm-000040"})
+    extension = _extension(tmp_path, first=41)
+    with pytest.raises(GateNotPassed, match="must contain the 200"):
+        _stage(decisions, human, sample, n, extension=extension)
 
 
 # --- completeness of the screening log --------------------------------------

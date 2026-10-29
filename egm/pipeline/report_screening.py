@@ -24,7 +24,7 @@ import argparse
 import hashlib
 import json
 import pathlib
-from typing import Any
+from typing import Any, Optional
 
 from pipeline.draw_sample import stratum_sizes
 from pipeline.prisma import PrismaStage
@@ -40,9 +40,41 @@ REGISTERED_VALIDATION_SAMPLE_SHA256 = (
     "da38e8b98efa21a4d15ac413702c77b8e8514ab197e5aba5064c720311681c0b"
 )
 
+# Amendment 8: the extension, if the 200 trigger it, is the whole of
+# `screening/validation_1000.json` (the registered 500/300/200 draw of
+# 2026-09-17, of which the 200 are a subsample), screened in one step.
+# Pinned the same way, before any of the 200 had been screened.
+REGISTERED_EXTENSION_SAMPLE_SHA256 = (
+    "54f0b35e59e5afe2d678a071b5a85758bc379ba8c1908be00a94fc5813689181"
+)
+
 
 class GateNotPassed(Exception):
     """Raised when screening results are requested before validation exists."""
+
+
+def check_extension_rule(first_stage: RecallReport, extension_supplied: bool) -> None:
+    """Enforce Amendment 8 given the 200-record result. Raises GateNotPassed to refuse.
+
+    The registered rule: one or more false negatives in the 200 triggers blind
+    screening of all 800 remaining records, and recall is then reported on the
+    full 1,000. Zero false negatives means no extension; the 200 is final.
+
+    An extension the 200 did not trigger is refused: accepting it would let
+    whoever runs this choose, after seeing both, which estimate to report.
+
+    A triggered extension not yet screened is NOT refused. Refusing would make
+    the investigator's finding of missed studies the thing that withholds the
+    screening counts, which this module exists to prevent. `screening_stage`
+    produces the counts stamped provisional, with the 200-record estimate the
+    rule says the 1,000 will replace.
+    """
+    if extension_supplied and first_stage.false_negatives == 0:
+        raise GateNotPassed(
+            "the 200-record first stage found no false negative, so under "
+            "Amendment 8 it is final and there is no extension; recall is "
+            "reported on the 200, not on whichever of two samples is supplied"
+        )
 
 
 def sample_ids_sha256(sample_path: pathlib.Path) -> str:
@@ -56,14 +88,22 @@ def assert_recall_validated(
     validation_path: pathlib.Path,
     sample_path: pathlib.Path,
     registered_sample_sha256: str = REGISTERED_VALIDATION_SAMPLE_SHA256,
-) -> RecallReport:
-    """Return the recall report if the investigator's validation is complete.
+    extension_path: Optional[pathlib.Path] = None,
+    registered_extension_sha256: str = REGISTERED_EXTENSION_SAMPLE_SHA256,
+) -> tuple[RecallReport, Optional[RecallReport]]:
+    """Return (recall of record, first stage if extended) once validation is complete.
 
     There is no threshold on the result. Protocol Section 5: "A recall
     estimate that comes out poor is reported, not re-run until favourable."
     A gate that opened only on good recall would let the investigator's
     finding of missed studies hide the screening counts it qualifies; instead
     the estimate travels with the counts wherever they are reported.
+
+    `sample_path` is always the 200. Under Amendment 8 `extension_path`, when
+    given, is the 1,000 that contains them; the recall of record is then
+    computed on the 1,000, and the 200 is returned beside it as the first
+    stage. Whether an extension may or must be supplied is
+    `check_extension_rule`'s decision, made from the 200's result.
     """
     validation_path = pathlib.Path(validation_path)
     sample_path = pathlib.Path(sample_path)
@@ -89,12 +129,39 @@ def assert_recall_validated(
 
     ids = {r["record_id"] for r in
            json.loads(sample_path.read_text(encoding="utf-8"))}
+    sizes = stratum_sizes(decisions_path)
     try:
-        return validate_recall(
-            validation_path, decisions_path, ids, stratum_sizes(decisions_path)
-        )
+        first = validate_recall(validation_path, decisions_path, ids, sizes)
     except ValueError as exc:
         raise GateNotPassed(f"recall validation is not valid: {exc}") from exc
+
+    check_extension_rule(first, extension_supplied=extension_path is not None)
+    if extension_path is None:
+        return first, None
+
+    extension_path = pathlib.Path(extension_path)
+    if not extension_path.exists():
+        raise GateNotPassed(f"no extension sample at {extension_path}")
+    actual = sample_ids_sha256(extension_path)
+    if actual != registered_extension_sha256:
+        raise GateNotPassed(
+            f"{extension_path} is not the registered extension sample "
+            f"(record-id sha256 {actual[:12]}, registered "
+            f"{registered_extension_sha256[:12]}). Amendment 8 fixed the "
+            "extension as the whole 1,000-record draw."
+        )
+    extended = {r["record_id"] for r in
+                json.loads(extension_path.read_text(encoding="utf-8"))}
+    if not ids <= extended:
+        raise GateNotPassed(
+            f"{len(ids - extended)} of the first-stage records are not in "
+            f"{extension_path}; the extension must contain the 200 it extends"
+        )
+    try:
+        final = validate_recall(validation_path, decisions_path, extended, sizes)
+    except ValueError as exc:
+        raise GateNotPassed(f"extended recall validation is not valid: {exc}") from exc
+    return final, first
 
 
 def screening_stage(
@@ -103,6 +170,8 @@ def screening_stage(
     sample_path: pathlib.Path,
     identified: int,
     registered_sample_sha256: str = REGISTERED_VALIDATION_SAMPLE_SHA256,
+    extension_path: Optional[pathlib.Path] = None,
+    registered_extension_sha256: str = REGISTERED_EXTENSION_SAMPLE_SHA256,
 ) -> tuple[PrismaStage, dict[str, Any]]:
     """Build the screening PRISMA stage. Raises unless validation is complete.
 
@@ -110,8 +179,9 @@ def screening_stage(
     corpus size — passed in rather than inferred, so a decision log that
     covers only part of the corpus cannot silently redefine the denominator.
     """
-    recall = assert_recall_validated(
-        decisions_path, validation_path, sample_path, registered_sample_sha256
+    recall, first_stage = assert_recall_validated(
+        decisions_path, validation_path, sample_path, registered_sample_sha256,
+        extension_path, registered_extension_sha256,
     )
 
     decisions = [d for d in read_decisions(decisions_path) if d.stage == "screening"]
@@ -144,6 +214,9 @@ def screening_stage(
     model_id, prompt_sha256 = single_ai_provenance(
         [d for d in decisions if d.screener == "ai"]
     )
+    # Amendment 8: false negatives in the 200 with no extension screened yet.
+    # Reported, never withheld, but marked so it cannot pass as final.
+    extension_owed = first_stage is None and recall.false_negatives > 0
 
     reason_parts = ", ".join(f"{k}={v}" for k, v in sorted(criteria.items()))
     stage = PrismaStage(
@@ -158,7 +231,17 @@ def screening_stage(
             f"rate {recall.weighted_fn_rate:.4f} (95% CI "
             f"{recall.weighted_fn_rate_ci_low:.4f}-"
             f"{recall.weighted_fn_rate_ci_high:.4f}); "
-            f"model={model_id}; prompt={prompt_sha256[:12]}"
+            + (
+                "PROVISIONAL: Amendment 8 extension to the full 1,000 is "
+                "required and not yet screened; "
+                if extension_owed else ""
+            )
+            + (
+                f"extended under Amendment 8 after a first stage of "
+                f"{first_stage.false_negatives} of {first_stage.n_validated}; "
+                if first_stage is not None else ""
+            )
+            + f"model={model_id}; prompt={prompt_sha256[:12]}"
         ),
     )
     summary = {
@@ -172,6 +255,13 @@ def screening_stage(
         "recall_weighted_fn_rate_ci_low": recall.weighted_fn_rate_ci_low,
         "recall_weighted_fn_rate_ci_high": recall.weighted_fn_rate_ci_high,
         "recall_implied_missed_high": recall.implied_missed_high,
+        "recall_extended": first_stage is not None,
+        "recall_extension_owed": extension_owed,
+        "first_stage_n": first_stage.n_validated if first_stage else None,
+        "first_stage_false_negatives":
+            first_stage.false_negatives if first_stage else None,
+        "first_stage_weighted_fn_rate_ci_high":
+            first_stage.weighted_fn_rate_ci_high if first_stage else None,
         "model_id": model_id,
         "prompt_sha256": prompt_sha256,
     }
@@ -217,6 +307,11 @@ def main() -> None:
         help="the registered validation sample, screening/validation_200.json",
     )
     parser.add_argument(
+        "--extension", type=pathlib.Path, default=None,
+        help="Amendment 8 extension, screening/validation_1000.json; only "
+        "once the 200 have triggered it and all 1,000 are screened",
+    )
+    parser.add_argument(
         "--corpus", type=pathlib.Path, required=True,
         help="the screened corpus; its record count is the PRISMA denominator",
     )
@@ -224,12 +319,16 @@ def main() -> None:
     args = parser.parse_args()
 
     stage, summary = screening_stage(
-        args.decisions, args.validation, args.sample, corpus_size(args.corpus)
+        args.decisions, args.validation, args.sample, corpus_size(args.corpus),
+        extension_path=args.extension,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     for key in ("identified", "include", "exclude", "unclear"):
         print(f"{key}: {summary[key]}")
+    if summary["recall_extension_owed"]:
+        print("PROVISIONAL: false negatives in the 200 -- Amendment 8 requires "
+              "screening the rest of validation_1000.json (RUNBOOK step 8)")
     print(f"recall: {summary['recall_false_negatives']} false negatives in "
           f"{summary['recall_n']}; weighted FN rate upper bound "
           f"{summary['recall_weighted_fn_rate_ci_high']:.4%}")
