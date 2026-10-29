@@ -589,8 +589,34 @@ replaced with:
   registered design. It is unchanged, but it is no longer offset by a measured
   kappa.
 
-These go into the limitations in `manuscript/METHODS.md`, Section 11, and the
+These go into the limitations in `manuscript/METHODS.md` (Section 10), and the
 abstract describes screening as "AI-led with investigator verification".
+
+### Correction (2026-10-29, after filing): the cost was understated
+
+The figures above — 1.83%, "up to about 69 eligible studies", against 0.37%
+and about 14 for the registered design — are the **unweighted** bounds. The
+figure the pipeline reports as eligible studies plausibly missed
+(`RecallReport.implied_missed_high`, printed beside the screening counts) is
+the **stratum-weighted** bound, each stratum's Clopper-Pearson upper bound
+weighted by its population share. With zero false negatives:
+
+| design | unweighted upper bound | weighted upper bound | studies plausibly missed (weighted) |
+|---|---:|---:|---:|
+| registered, 500 / 300 / 200 | 0.37% | 1.38% | about 52 |
+| amended, 100 / 60 / 40 | 1.83% | 6.69% | **about 252** |
+
+Computed with `pipeline.recall.clopper_pearson` against stratum populations
+790 / 1,369 / 1,608. The weighted bound is wider because the high-confidence
+stratum, which holds 43% of exclusions, is sampled at only 40 records.
+
+This changes the "few dozen" reasoning in the cost section: up to about 252
+missed studies against ~5,700 provisional inclusions is still unlikely to
+empty a dense cell, but it is a materially larger exposure for sparse cells
+than stated. The OSF update text quotes no figures, so the filed amendment is
+not wrong. This file and `manuscript/METHODS.md` now state both bounds. Found
+while drafting METHODS, before any validation screening; nothing about the
+design, allocation or seed has changed.
 
 ### Text for the OSF update form
 
