@@ -246,6 +246,27 @@ def test_full_human_screening_of_the_drawn_sample_succeeds(tmp_path):
     assert report.n_validated == 20
 
 
+def test_records_outside_the_drawn_sample_are_not_counted(tmp_path):
+    """Amendment 8 appends the extension to the same human log. The 200-record
+    first stage must still be computed on the 200, or the trigger reads the
+    1,000 and an extension's false negative would count towards it."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    ids = set()
+    for n in range(40):
+        rid = f"egm-{n}"
+        if n < 20:
+            ids.add(rid)
+        _decision(ai_p, rid, "exclude", "ai", confidence=0.9, criterion="not_primary")
+        if n == 30:
+            _decision(human_p, rid, "include", "human")
+        else:
+            _decision(human_p, rid, "exclude", "human", criterion="not_primary")
+
+    report = validate_recall(human_p, ai_p, ids, {"high": 100})
+    assert report.n_validated == 20
+    assert report.false_negatives == 0
+
+
 def test_truncated_ai_log_raises(tmp_path):
     """Same failure as a partial human sample, on the other log."""
     human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"

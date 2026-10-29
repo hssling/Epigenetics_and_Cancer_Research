@@ -237,7 +237,10 @@ def validate_recall(
             "against a truncated screening log"
         )
 
-    shared = sorted(set(human) & set(ai))
+    # The drawn sample, not everything the two logs share: under Amendment 8
+    # the extension is appended to the same log, and counting it here would
+    # make the 200-record first stage silently become the 1,000.
+    shared = sorted(expected_record_ids & set(human) & set(ai))
     if not shared:
         raise ValueError("no records appear in both decision logs")
 
