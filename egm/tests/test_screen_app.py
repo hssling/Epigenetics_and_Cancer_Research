@@ -125,6 +125,7 @@ def test_stale_submission_over_http_is_refused_and_writes_nothing(tmp_path):
     thread = threading.Thread(
         target=screen_app.serve,
         args=(sample, out, "calibration", 8791),
+        kwargs={"min_dwell_s": 0},
         daemon=True,
     )
     thread.start()
@@ -222,3 +223,77 @@ def test_a_human_decision_on_a_pmid_less_record_round_trips(tmp_path):
     assert entry.record_id == "egm-000123"
     assert entry.pmid is None
     assert entry.screener == "human"
+
+
+def _start(sample, out, port, min_dwell_s):
+    import threading
+    import urllib.error
+    import urllib.request
+
+    threading.Thread(
+        target=screen_app.serve,
+        args=(sample, out, "calibration", port),
+        kwargs={"min_dwell_s": min_dwell_s},
+        daemon=True,
+    ).start()
+
+    def get(path):
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=5) as r:
+                return r.status, r.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read().decode("utf-8")
+
+    for _ in range(50):
+        try:
+            get("/favicon-probe-not-a-page")
+            break
+        except Exception:
+            time.sleep(0.1)
+    return get
+
+
+def test_a_decision_faster_than_the_gate_floor_is_refused_and_writes_nothing(tmp_path):
+    """A held key once wrote 300 includes in six minutes; the gate rejects that
+    log after the fact, so the app must refuse it while it is happening."""
+    out = tmp_path / "out.jsonl"
+    get = _start(_sample(tmp_path, 3), out, 8792, min_dwell_s=1.0)
+
+    get("/")
+    status, body = get("/decide?record_id=egm-0&decision=include&criterion=")
+    assert status == 429
+    assert "Too fast" in body
+    assert not out.exists() or read_decisions(out) == []
+
+    time.sleep(1.1)
+    status, _ = get("/decide?record_id=egm-0&decision=include&criterion=")
+    assert status in (200, 303)
+    assert [d.record_id for d in read_decisions(out)] == ["egm-0"]
+
+
+def test_a_decision_for_a_record_never_shown_is_refused(tmp_path):
+    """Typing the /decide URL directly must not bypass the dwell floor."""
+    out = tmp_path / "out.jsonl"
+    get = _start(_sample(tmp_path, 3), out, 8793, min_dwell_s=0.5)
+
+    status, _ = get("/decide?record_id=egm-0&decision=include&criterion=")
+    assert status == 429
+    assert not out.exists() or read_decisions(out) == []
+
+
+def test_reloading_the_page_does_not_restart_the_dwell_clock(tmp_path):
+    out = tmp_path / "out.jsonl"
+    get = _start(_sample(tmp_path, 3), out, 8794, min_dwell_s=0.6)
+
+    get("/")
+    time.sleep(0.7)
+    get("/")  # reload: same record, clock keeps running
+    status, _ = get("/decide?record_id=egm-0&decision=include&criterion=")
+    assert status in (200, 303)
+
+
+def test_page_ignores_key_repeat_and_early_keys(tmp_path):
+    record = {"record_id": "egm-1", "pmid": "1", "year": 2020, "title": "T", "abstract": "A"}
+    page = screen_app.build_page(record, 1, 300, 0.0)
+    assert "ev.repeat || !ready" in page
+    assert f"{screen_app.MIN_SECONDS_PER_DECISION * 1000:.0f}" in page

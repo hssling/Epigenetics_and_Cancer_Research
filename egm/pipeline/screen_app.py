@@ -21,6 +21,7 @@ from typing import Any, Optional
 from urllib.parse import parse_qs, urlparse
 
 from pipeline import highlight
+from pipeline.agreement import MIN_SECONDS_PER_DECISION
 from pipeline.screen_schema import (
     CRITERIA,
     CRITERION_LABELS,
@@ -143,11 +144,21 @@ def build_page(
 {highlight.signal_strip(record["title"], record.get("abstract") or "") if has_abstract else ''}
 <p class="note">Keyword matches are places to look, not judgements.</p>
 <div class="a">{highlight.mark(abstract) if has_abstract else html.escape(abstract)}</div>
-<p><kbd>i</kbd> include &nbsp; <kbd>e</kbd> exclude &nbsp; <kbd>u</kbd> unclear</p>
+<p id="keys" style="opacity:.35"><kbd>i</kbd> include &nbsp; <kbd>e</kbd> exclude &nbsp;
+ <kbd>u</kbd> unclear <span id="wait">&nbsp; (keys unlock after {MIN_SECONDS_PER_DECISION:.0f}s)</span></p>
 <div id="crit"><b>Exclusion criterion:</b><ul>{buttons}</ul></div>
 <script>
 let awaiting = false;
+let ready = false;
+setTimeout(() => {{
+  ready = true;
+  document.getElementById("keys").style.opacity = 1;
+  document.getElementById("wait").remove();
+}}, {MIN_SECONDS_PER_DECISION * 1000:.0f});
 document.addEventListener("keydown", (ev) => {{
+  // A held key auto-repeats onto every record that loads after it; one
+  // 2026-10-29 log was 300 includes in six minutes from exactly that.
+  if (ev.repeat || !ready) return;
   const k = ev.key.toLowerCase();
   if (!awaiting) {{
     if (k === "i") go("include", "");
@@ -168,12 +179,25 @@ function go(decision, criterion) {{
 
 
 def serve(
-    sample_path: pathlib.Path, out_path: pathlib.Path, stage: Stage, port: int
+    sample_path: pathlib.Path,
+    out_path: pathlib.Path,
+    stage: Stage,
+    port: int,
+    min_dwell_s: float = MIN_SECONDS_PER_DECISION,
 ) -> None:
-    """Run the screening server until the queue is empty."""
+    """Run the screening server until the queue is empty.
+
+    A decision arriving less than `min_dwell_s` after its record was shown is
+    refused and writes nothing. The page enforces the same delay, but the page
+    can be bypassed by a URL; the log cannot be allowed to fill faster than the
+    agreement gate will later accept, or a slip costs a whole session.
+    """
     total = len(json.loads(pathlib.Path(sample_path).read_text(encoding="utf-8")))
     started = time.monotonic()
-    state: dict[str, Any] = {"queue": load_queue(sample_path, out_path)}
+    state: dict[str, Any] = {
+        "queue": load_queue(sample_path, out_path),
+        "shown": None,  # (record_id, monotonic time it was first rendered)
+    }
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):  # noqa: A003 - silence per-request logging
@@ -207,6 +231,20 @@ def serve(
                         status=409,
                     )
                     return
+                shown = state["shown"]
+                if shown is None or shown[0] != record["record_id"]:
+                    dwell = None
+                else:
+                    dwell = time.monotonic() - shown[1]
+                if dwell is None or dwell < min_dwell_s:
+                    self._send(
+                        "<!doctype html><meta charset='utf-8'>"
+                        "<p style='font:16px system-ui;margin:3rem'>Too fast: a decision "
+                        f"needs at least {min_dwell_s:.0f}s on the record. Nothing was "
+                        "written. <a href='/'>Back to the record</a>.</p>",
+                        status=429,
+                    )
+                    return
                 decision = params["decision"][0]
                 criterion = params.get("criterion", [""])[0] or None
                 record_decision(out_path, record, decision, criterion, stage)
@@ -225,6 +263,9 @@ def serve(
                 return
 
             done = total - len(state["queue"])
+            head_id = state["queue"][0]["record_id"]
+            if state["shown"] is None or state["shown"][0] != head_id:
+                state["shown"] = (head_id, time.monotonic())
             self._send(build_page(
                 state["queue"][0], done + 1, total, time.monotonic() - started
             ))
