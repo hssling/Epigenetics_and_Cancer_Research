@@ -366,8 +366,8 @@ as they stand and the sample is extended within the already-drawn 1,000; the
 software has no option to drop records from the calculation, and the
 screening counts are reported with whatever estimate results. A recall
 estimate that comes out poor is reported, not re-run until it looks
-favourable. The extension rule is fixed by Amendment 8 (**DRAFT, not yet filed
-on OSF**), written before any validation record was screened: one or more false negatives among the 200 triggers blind
+favourable. The extension rule is fixed by Amendment 8 (filed on OSF and approved
+2026-10-29), before any validation record was screened: one or more false negatives among the 200 triggers blind
 screening of all 800 remaining records of the 1,000-record sample
 (400 / 240 / 160), in a single step with no intermediate stopping point, and
 recall is then reported on the full 1,000, with the 200-record result shown as

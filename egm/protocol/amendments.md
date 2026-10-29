@@ -18,7 +18,7 @@ what existed at that point and what did not.
 | 5 | 2026-09-17 | 5 Screening, Stage 2 | Recall-validation confidence strata reset from (<0.5, <0.8) to (<0.66, <0.81) | The registered boundaries left only 16 of 3,767 exclusions in the stratum the design draws 500 from. See Amendment 5. |
 | 6 | 2026-09-17 | 4.1 Information sources | ClinicalTrials.gov searched as a separate registry stream (694 registrations). WHO ICTRP **not** searched. | The registered registry search was outstanding. ICTRP has no endpoint callable unattended; it remains an outstanding manual step. See Amendment 6. |
 | 7 | 2026-10-29 | 5 Screening, Stages 0 and 2; 9; 11 | Blind kappa calibration gate withdrawn. Screening becomes AI-led with investigator verification. Recall validation reduced from 1,000 to 200 blind-screened AI-exclusions. | The investigator will not do the registered 300-record blind calibration. A screening design that can actually be executed, and is reported as what it is, is preferable to one that is registered and not carried out. See Amendment 7. |
-| 8 | 2026-10-29 (DRAFT) | 5 Screening, Stage 2 | Extension rule fixed: one or more false negatives in the 200 triggers blind screening of the remaining 800 of `validation_1000.json`, in a single step; recall is then reported on the full 1,000. | Amendment 7 kept "extend the sample" but left the step and the stopping point unspecified, which would have let them be chosen after seeing the result. See Amendment 8. |
+| 8 | 2026-10-29 | 5 Screening, Stage 2 | Extension rule fixed: one or more false negatives in the 200 triggers blind screening of the remaining 800 of `validation_1000.json`, in a single step; recall is then reported on the full 1,000. | Amendment 7 kept "extend the sample" but left the step and the stopping point unspecified, which would have let them be chosen after seeing the result. See Amendment 8. |
 
 ---
 
@@ -614,8 +614,13 @@ stratum, which holds 43% of exclusions, is sampled at only 40 records.
 This changes the "few dozen" reasoning in the cost section: up to about 252
 missed studies against ~5,700 provisional inclusions is still unlikely to
 empty a dense cell, but it is a materially larger exposure for sparse cells
-than stated. The OSF update text quotes no figures, so the filed amendment is
-not wrong. This file and `manuscript/METHODS.md` now state both bounds. Found
+than stated. ~~The OSF update text quotes no figures, so the filed amendment is
+not wrong.~~ **That was wrong** (found 2026-10-29, while filing Amendment 8):
+the short text below quotes no figures, but the "Reason for update" actually
+filed on OSF does — "the two-sided upper bound is 1.83% (about 69 of 3,767
+exclusions), against 0.37% (about 14)". The public record therefore carried
+the understated figure. The Amendment 8 filing corrects it on OSF. This file
+and `manuscript/METHODS.md` now state both bounds. Found
 while drafting METHODS, before any validation screening; nothing about the
 design, allocation or seed has changed.
 
@@ -637,11 +642,16 @@ design, allocation or seed has changed.
 
 ---
 
-## Amendment 8 (DRAFT, 2026-10-29): the recall-validation extension rule
+## Amendment 8 (enacted 2026-10-29): the recall-validation extension rule
 
-> **Status: DRAFT — not filed on OSF.** Decided before any of the 200
-> validation records has been screened by the investigator. No human
-> validation log exists.
+> **Status: filed and approved.** Submitted as an update to OSF registration
+> 3xtf2 at 16:13 UTC on 2026-10-29 and approved at 16:13 UTC (schema response
+> `6ae3701d70c04d36f089d078`; updated questions: Screening reliability,
+> Sampling and sample size). Decided and filed before any of the 200
+> validation records had been screened by the investigator; no human
+> validation log existed. The filing also corrects, in its justification and
+> under Screening reliability, the unweighted Amendment 7 figures quoted on
+> OSF (see the correction under Amendment 7).
 
 ### What the registration says, and what Amendment 7 left open
 

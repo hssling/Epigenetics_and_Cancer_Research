@@ -1,6 +1,6 @@
 # Manuscript status: what exists, and what does not
 
-**Date:** 2026-10-29 (Amendment 7 filed; Amendment 8 drafted, not filed; sections 1 and 4 updated)
+**Date:** 2026-10-29 (Amendment 7 filed; Amendment 8 filed; sections 1 and 4 updated)
 **Registration:** OSF Registries [3xtf2](https://osf.io/3xtf2) · DOI [10.17605/OSF.IO/3XTF2](https://doi.org/10.17605/OSF.IO/3XTF2)
 
 This document exists because the project it belongs to was created to correct a
@@ -32,7 +32,7 @@ this project's results.
 | Calibration: human screening of 300 | Attempted 2026-10-29; log failed the timing check; not repeated | `screening/human_calibration_INVALID_2026-10-29.jsonl` (untracked) |
 | Cohen's kappa / Stage 0 gate | **WITHDRAWN** by Amendment 7 — never computed | OSF 3xtf2 update, approved 2026-10-29 |
 | Validation subsample drawn (Amendment 7) | Complete — 200 (100/60/40), seed 20261029 | `screening/validation_200.json` |
-| Extension rule (Amendment 8) | **DRAFT, not filed on OSF** — any false negative in the 200 → screen the other 800 in one step; recall on 1,000 | `protocol/amendments.md` |
+| Extension rule (Amendment 8) | Filed and approved on OSF 2026-10-29 — any false negative in the 200 → screen the other 800 in one step; recall on 1,000 | `protocol/amendments.md` |
 | **Recall validation: human screening of 200** | **NOT DONE — needs the investigator** | — |
 | **Full-text screening** | NOT DONE | — |
 | Coding schema (the extraction instrument) | Complete — built, not yet used | `pipeline/coding_schema.py` |
@@ -115,9 +115,8 @@ investigator, which is the only question the registered gate asks.
 > produce the screening counts with the recall estimate attached. The text
 > below is kept as the record of the registered sequence.
 >
-> **Before screening the 200, file Amendment 8 on OSF** (text at the end of
-> its section in `protocol/amendments.md`), so the extension rule is on the
-> public record before any result exists. If the 200 contain one or more
+> Amendment 8 (filed and approved 2026-10-29) fixes what happens next: if
+> the 200 contain one or more
 > false negatives, the counts come out marked PROVISIONAL and the other 800
 > of `validation_1000.json` must be screened (RUNBOOK step 8), then step 9
 > is re-run with `--extension screening/validation_1000.json`.
