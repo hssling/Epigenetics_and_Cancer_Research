@@ -1,0 +1,390 @@
+"""Cohen's kappa and the kappa >= 0.75 gate."""
+import json
+
+import pytest
+
+from pipeline.agreement import cohens_kappa, compare
+from pipeline.screen_schema import ScreeningDecision, append_decision
+
+
+def test_perfect_agreement_gives_kappa_one():
+    labels = ["include", "exclude", "unclear", "include"]
+    kappa, _, _ = cohens_kappa(labels, list(labels))
+    assert kappa == pytest.approx(1.0)
+
+
+def test_chance_level_agreement_gives_kappa_near_zero():
+    """Agreement that is no better than chance must not look like skill."""
+    human = ["include"] * 50 + ["exclude"] * 50
+    ai = (["include", "exclude"] * 50)
+    kappa, _, _ = cohens_kappa(human, ai)
+    assert abs(kappa) < 0.1
+
+
+def test_systematic_disagreement_gives_negative_kappa():
+    kappa, _, _ = cohens_kappa(["include"] * 10 + ["exclude"] * 10,
+                               ["exclude"] * 10 + ["include"] * 10)
+    assert kappa < 0
+
+
+def test_high_but_imperfect_agreement():
+    human = ["include"] * 40 + ["exclude"] * 60
+    ai = ["include"] * 38 + ["exclude"] * 2 + ["exclude"] * 58 + ["include"] * 2
+    kappa, low, high = cohens_kappa(human, ai)
+    assert 0.85 < kappa < 1.0
+    assert low < kappa < high
+
+
+def test_kappa_ci_is_clamped_to_the_valid_range():
+    """Reconstructing the pre-fix behaviour: near-degenerate marginals push
+    the normal-approximation CI outside kappa's [-1, 1] parameter space. For
+    these inputs, kappa=0 and the raw (unclamped) bounds work out to about
+    -1.79 and +1.79 — outside the domain kappa is even defined on, and it
+    would be published as-is. Both bounds must be clamped to [-1, 1].
+    """
+    import math
+
+    human = ["include"] * 6
+    ai = ["include"] * 5 + ["exclude"]
+
+    # The raw, unclamped formula (what the code computed before the fix),
+    # reconstructed here to confirm this case actually breaks it.
+    n = len(human)
+    observed = sum(h == a for h, a in zip(human, ai)) / n
+    from collections import Counter
+    hc, ac = Counter(human), Counter(ai)
+    expected = sum((hc[l] / n) * (ac[l] / n) for l in set(hc) | set(ac))
+    kappa_raw = (observed - expected) / (1 - expected)
+    se = math.sqrt(observed * (1 - observed) / (n * (1 - expected) ** 2))
+    raw_low, raw_high = kappa_raw - 1.96 * se, kappa_raw + 1.96 * se
+    assert raw_high > 1.0 and raw_low < -1.0, (
+        "test input no longer reproduces an out-of-range CI"
+    )
+
+    kappa, low, high = cohens_kappa(human, ai)
+    assert kappa == pytest.approx(kappa_raw)
+    assert low == -1.0
+    assert high == 1.0
+
+
+def test_confidence_interval_narrows_with_more_data():
+    """Imperfect agreement on purpose.
+
+    At perfect agreement observed == 1, so the standard error is exactly zero
+    and BOTH intervals have zero width — the comparison would be 0 < 0 and
+    the test would fail on correct code.
+    """
+    small = cohens_kappa(["include"] * 18 + ["exclude"] * 2, ["include"] * 20)
+    large = cohens_kappa(["include"] * 180 + ["exclude"] * 20, ["include"] * 200)
+    assert (large[2] - large[1]) < (small[2] - small[1])
+
+
+def test_mismatched_lengths_raise():
+    with pytest.raises(ValueError, match="length"):
+        cohens_kappa(["include"], ["include", "exclude"])
+
+
+def test_empty_input_raises():
+    with pytest.raises(ValueError, match="empty"):
+        cohens_kappa([], [])
+
+
+# --- compare() over decision logs ------------------------------------------
+
+
+# A real screening session records when each judgement was made, minutes
+# apart. `agreement.compare` refuses a "human" log whose timestamps show it
+# was written in one pass, so these fixtures spread them the way screen_app
+# would rather than sharing one stamp.
+def _human_time(n: int) -> str:
+    minute, second = divmod(n * 37, 60)
+    hour, minute = divmod(minute, 60)
+    return f"2026-09-13T{10 + hour:02d}:{minute:02d}:{second:02d}Z"
+
+
+def _write(path, pairs, screener):
+    for n, (record_id, decision, criterion) in enumerate(pairs):
+        append_decision(path, ScreeningDecision(
+            record_id=record_id, pmid=record_id.split("-")[1], decision=decision,
+            criterion=criterion, confidence=0.9 if screener == "ai" else None,
+            reason="r" if screener == "ai" else None, screener=screener,
+            model_id="claude-opus-5" if screener == "ai" else None,
+            prompt_sha256="a" * 64 if screener == "ai" else None,
+            stage="calibration",
+            decided_at="2026-09-13T10:00:00Z" if screener == "ai" else _human_time(n),
+            supersedes=None,
+        ))
+
+
+def test_compare_reports_gate_met_when_kappa_high(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "include" if n < 40 else "exclude",
+              None if n < 40 else "not_primary") for n in range(100)]
+    _write(human_p, pairs, "human")
+    _write(ai_p, pairs, "ai")
+
+    report = compare(human_p, ai_p, gate=0.75)
+    assert report.n == 100
+    assert report.kappa == pytest.approx(1.0)
+    assert report.gate_met is True
+    assert report.disagreements == []
+
+
+def test_compare_lists_every_disagreement(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    _write(human_p, [("egm-1", "include", None), ("egm-2", "include", None)], "human")
+    _write(ai_p, [("egm-1", "include", None),
+                  ("egm-2", "exclude", "not_primary")], "ai")
+
+    report = compare(human_p, ai_p, gate=0.75)
+    assert len(report.disagreements) == 1
+    d = report.disagreements[0]
+    assert d["record_id"] == "egm-2"
+    assert d["human"] == "include" and d["ai"] == "exclude"
+    assert d["ai_criterion"] == "not_primary"
+
+
+def test_compare_fails_the_gate_on_poor_agreement(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    hp = [(f"egm-{n}", "include" if n % 2 else "exclude",
+           None if n % 2 else "not_primary") for n in range(100)]
+    ap = [(f"egm-{n}", "exclude" if n % 3 else "include",
+           "not_primary" if n % 3 else None) for n in range(100)]
+    _write(human_p, hp, "human")
+    _write(ai_p, ap, "ai")
+
+    assert compare(human_p, ai_p, gate=0.75).gate_met is False
+
+
+def test_compare_raises_when_records_do_not_align(tmp_path):
+    """Comparing different record sets would silently compute nonsense."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    _write(human_p, [("egm-1", "include", None)], "human")
+    _write(ai_p, [("egm-2", "include", None)], "ai")
+
+    with pytest.raises(ValueError, match="egm-1"):
+        compare(human_p, ai_p, gate=0.75)
+
+
+def test_compare_uses_the_latest_decision_when_one_supersedes_another(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    _write(human_p, [("egm-1", "include", None)], "human")
+    append_decision(human_p, ScreeningDecision(
+        record_id="egm-1", pmid="1", decision="exclude", criterion="not_human",
+        confidence=None, reason=None, screener="human", model_id=None,
+        prompt_sha256=None, stage="calibration",
+        decided_at="2026-09-13T11:00:00Z", supersedes="2026-09-13T10:00:00Z",
+    ))
+    _write(ai_p, [("egm-1", "exclude", "not_human")], "ai")
+
+    assert compare(human_p, ai_p, gate=0.75).disagreements == []
+
+
+# --- Fix 4: comparing a log against itself must not silently pass the gate -
+
+
+def test_compare_rejects_the_same_log_passed_as_both_human_and_ai(tmp_path):
+    """compare(human_log, human_log) must not report a perfect, meaningless
+    kappa=1.0 gate pass — that is what an accidental --human/--ai swap, or
+    passing one path twice, would otherwise produce silently.
+    """
+    human_p = tmp_path / "h.jsonl"
+    pairs = [(f"egm-{n}", "include" if n < 5 else "exclude",
+              None if n < 5 else "not_primary") for n in range(10)]
+    _write(human_p, pairs, "human")
+
+    with pytest.raises(ValueError, match="screener"):
+        compare(human_p, human_p, gate=0.75)
+
+
+def test_compare_rejects_ai_log_passed_as_human(tmp_path):
+    """Swapping --human and --ai must be caught, not silently accepted."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "include" if n < 5 else "exclude",
+              None if n < 5 else "not_primary") for n in range(10)]
+    _write(human_p, pairs, "human")
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="screener"):
+        compare(ai_p, human_p, gate=0.75)  # swapped
+
+
+# --- Fix 6: reports carry provenance, and refuse to blend two runs ---------
+
+
+def test_agreement_report_carries_model_and_prompt_provenance(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "include" if n < 5 else "exclude",
+              None if n < 5 else "not_primary") for n in range(10)]
+    _write(human_p, pairs, "human")
+    _write(ai_p, pairs, "ai")
+
+    report = compare(human_p, ai_p, gate=0.75)
+    assert report.model_id == "claude-opus-5"
+    assert report.prompt_sha256 == "a" * 64
+
+
+def test_agreement_report_raises_when_ai_log_spans_two_models(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "include", None) for n in range(5)]
+    _write(human_p, pairs, "human")
+    _write(ai_p, pairs, "ai")
+    append_decision(human_p, ScreeningDecision(
+        record_id="egm-other", pmid="99", decision="include", criterion=None,
+        confidence=None, reason=None, screener="human", model_id=None,
+        prompt_sha256=None, stage="calibration",
+        decided_at="2026-09-13T10:00:00Z", supersedes=None,
+    ))
+    append_decision(ai_p, ScreeningDecision(
+        record_id="egm-other", pmid="99", decision="include", criterion=None,
+        confidence=0.9, reason="r", screener="ai", model_id="claude-sonnet-5",
+        prompt_sha256="a" * 64, stage="calibration",
+        decided_at="2026-09-13T10:00:00Z", supersedes=None,
+    ))
+
+    with pytest.raises(ValueError, match="more than one AI model"):
+        compare(human_p, ai_p, gate=0.75)
+
+
+# --- the gate command must be runnable on the logs that actually exist -------
+
+
+def _sample(tmp_path, record_ids, name="sample.json"):
+    path = tmp_path / name
+    path.write_text(json.dumps(
+        [{"record_id": r, "title": "T", "abstract": "A"} for r in record_ids]
+    ), encoding="utf-8")
+    return path
+
+
+def test_a_sample_lets_a_300_record_human_log_meet_a_whole_corpus_ai_log(tmp_path):
+    """The real shape of the Stage 0 gate, which set-equality made impossible.
+
+    The investigator screens the 300-record calibration sample; the model has
+    screened all 9,786 records. An audit found the documented gate command
+    raising "logs cover different records" -- so the one command the whole
+    protocol turns on could not be run as written.
+    """
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    calibration = [f"egm-{n}" for n in range(30)]
+    pairs = [(r, "include" if int(r.split("-")[1]) < 12 else "exclude",
+              None if int(r.split("-")[1]) < 12 else "not_primary")
+             for r in calibration]
+    _write(human_p, pairs, "human")
+    # the AI log covers the whole corpus, not just the sample
+    _write(ai_p, pairs + [(f"egm-{n}", "exclude", "not_primary")
+                          for n in range(30, 300)], "ai")
+
+    report = compare(human_p, ai_p, sample_path=_sample(tmp_path, calibration))
+
+    assert report.n == 30
+    assert report.kappa == 1.0
+    assert report.sample_path is not None and report.sample_sha256 is not None
+
+
+def test_a_sampled_record_missing_from_either_log_is_refused(tmp_path):
+    """Otherwise the kappa is computed on whatever happens to be finished."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "exclude", "not_primary") for n in range(20)]
+    _write(human_p, pairs[:10], "human")      # investigator stopped half way
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="human log is missing 10"):
+        compare(human_p, ai_p, sample_path=_sample(tmp_path, [p[0] for p in pairs]))
+
+
+def test_without_a_sample_set_equality_still_binds(tmp_path):
+    """The relaxation is opt-in and explicit; it is not the new default."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "exclude", "not_primary") for n in range(20)]
+    _write(human_p, pairs[:10], "human")
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="cover different records"):
+        compare(human_p, ai_p)
+
+
+def test_an_empty_sample_is_refused(tmp_path):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "exclude", "not_primary") for n in range(5)]
+    _write(human_p, pairs, "human")
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="no records to compare"):
+        compare(human_p, ai_p, sample_path=_sample(tmp_path, []))
+
+
+# --- attack 3: a "human" log transcribed from the AI log ---------------------
+
+
+def _relabelled_ai_log(path, pairs, flip_every=12):
+    """The audit's attack: the AI log, relabelled and partly flipped.
+
+    screener becomes "human", model_id and prompt_sha256 are stripped, and
+    every Nth label is flipped so the kappa lands in a believable range
+    instead of at 1.0. Every structural check in `compare` passes: the fields
+    are right, the records align, the screener strings are what they should
+    be. Only the timestamps give it away, because the whole file was written
+    in one pass.
+    """
+    for n, (record_id, decision, criterion) in enumerate(pairs):
+        if n % flip_every == 0:
+            decision = "exclude" if decision == "include" else "include"
+            criterion = "not_primary" if decision == "exclude" else None
+        append_decision(path, ScreeningDecision(
+            record_id=record_id, pmid=record_id.split("-")[1], decision=decision,
+            criterion=criterion, confidence=None, reason=None, screener="human",
+            model_id=None, prompt_sha256=None, stage="calibration",
+            decided_at="2026-09-13T10:00:00Z", supersedes=None,
+        ))
+
+
+def test_a_human_log_written_in_one_pass_is_refused(tmp_path):
+    """This attack landed: kappa 0.838, gate met, every other check passing."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "include" if n < 40 else "exclude",
+              None if n < 40 else "not_primary") for n in range(100)]
+    _relabelled_ai_log(human_p, pairs)
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="same timestamp"):
+        compare(human_p, ai_p)
+
+
+def test_a_human_log_screened_impossibly_fast_is_refused(tmp_path):
+    """Timestamps that vary but imply a second per abstract."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "exclude", "not_primary") for n in range(100)]
+    for n, (record_id, decision, criterion) in enumerate(pairs):
+        append_decision(human_p, ScreeningDecision(
+            record_id=record_id, pmid=str(n), decision=decision,
+            criterion=criterion, confidence=None, reason=None, screener="human",
+            model_id=None, prompt_sha256=None, stage="calibration",
+            decided_at=f"2026-09-13T10:{n // 60:02d}:{n % 60:02d}Z",
+            supersedes=None,
+        ))
+    _write(ai_p, pairs, "ai")
+
+    with pytest.raises(ValueError, match="1.0s each"):
+        compare(human_p, ai_p)
+
+
+def test_a_realistically_paced_human_log_is_accepted(tmp_path):
+    """The check must not make real screening impossible to report."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "include" if n < 40 else "exclude",
+              None if n < 40 else "not_primary") for n in range(100)]
+    _write(human_p, pairs, "human")
+    _write(ai_p, pairs, "ai")
+
+    assert compare(human_p, ai_p).n == 100
+
+
+def test_timing_is_not_applied_to_a_log_too_short_to_judge(tmp_path):
+    """Under 20 decisions, pace says nothing; the check stays silent."""
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    pairs = [(f"egm-{n}", "exclude", "not_primary") for n in range(10)]
+    _relabelled_ai_log(human_p, pairs, flip_every=1000)
+    _write(ai_p, pairs, "ai")
+
+    assert compare(human_p, ai_p).n == 10

@@ -1,5 +1,9 @@
 # Factors Influencing Epigenetics in Cancer Prevention: Systematic Review & Meta-Analysis Automation
-[![Living Review Pipeline](https://github.com/hssling/Factors-Influencing-Epigenetics-in-Cancer-Prevention-Comprehensive-Findings-2019-2025-/actions/workflows/living-review.yml/badge.svg)](https://github.com/hssling/Factors-Influencing-Epigenetics-in-Cancer-Prevention-Comprehensive-Findings-2019-2025-/actions/workflows/living-review.yml)
+
+> ## ⚠️ This pipeline is deprecated
+> The manuscript and datasets in `output/` and `data/` contain placeholder
+> constants and randomly generated values. They are **not research findings**.
+> See [DEPRECATED.md](DEPRECATED.md). Active work is in `egm/`.
 
 ## Project Overview
 

@@ -1,0 +1,3 @@
+flow,stage,identified,excluded,included,reason
+pubmed,identification_pubmed,9089,1,9088,"PubMed-internal duplicates removed before the merge: duplicates removed (doi=1, pmid=0, fuzzy=0)"
+combined,identification_combined,9978,11,9967,"union = identification_pubmed included (9088) + Europe PMC retrieved (890) = 9978; cross-source duplicates removed (doi=0, pmid=0, fuzzy=11)"
