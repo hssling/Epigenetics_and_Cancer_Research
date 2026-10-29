@@ -46,6 +46,10 @@ unchanged — the log records which is which.
 
 ---
 
+> **Steps 1–2 and the kappa gate were withdrawn by Amendment 7** (OSF,
+> 2026-10-29). They are kept below as the record of what was registered and
+> attempted. The investigator's remaining screening step is **step 7**.
+
 ## 1. Draw the calibration sample
 
     cd egm
@@ -194,22 +198,41 @@ that, and refuses before writing anything.
 `protocol/amendments.md`, Amendment 5. Redrawing needs a new seed and a new
 amendment entry.
 
+**Amendment 7** (filed and approved on OSF 2026-10-29) reduced the screened
+sample to 200, drawn from the 1,000 after approval:
+
+    python -m pipeline.draw_sample subsample \
+      --parent screening/validation_1000.json \
+      --decisions screening/screening_decisions_sonnet.jsonl \
+      --out screening/validation_200.json \
+      --low 100 --mid 60 --high 40 --seed 20261029
+
+**Already drawn** (2026-10-29): `screening/validation_200.json`, SHA-256
+`a6b922a1…`. Screen it blind:
+
     python -m pipeline.screen_app \
-      --sample screening/validation_1000.json \
+      --sample screening/validation_200.json \
       --out screening/human_validation.jsonl \
       --stage validation
 
-Roughly 5-8 hours. This is the step that produces the published recall figure,
-and like step 2 it is the investigator's own work — an AI re-screen of records
-the same model already excluded measures nothing.
+Roughly 1-1.5 hours. This is the step that produces the published recall
+figure, and it is the investigator's own work — an AI re-screen of records the
+same model already excluded measures nothing. No assistant, summary or
+suggestion while screening; the app's keyword highlighting is the only aid
+Amendment 7 permits.
 
 ## 8. Compute recall
 
     python -m pipeline.report_recall \
       --human screening/human_validation.jsonl \
       --ai screening/screening_decisions_sonnet.jsonl \
-      --sample screening/validation_1000.json \
+      --sample screening/validation_200.json \
       --out screening/recall.json
+
+The human log must pass the same timing check as the calibration gate (no
+decision faster than 3 s on average); a log that fails is reported as failed.
+If false negatives are found, the sample is extended within the 1,000, never
+redrawn.
 
 Report whatever it says. The registration commits to publishing a poor recall
 estimate rather than re-running until it improves; `recall.py` has no parameter

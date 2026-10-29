@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from pipeline.agreement import assert_human_log_is_plausibly_human
 from pipeline.screen_schema import (
     ScreeningDecision,
     read_decisions,
@@ -205,6 +206,20 @@ def validate_recall(
     """
     human = _latest(read_decisions(human_path))
     ai = _latest(read_decisions(ai_path))
+
+    # Amendment 7 withdrew the kappa gate but kept its validity checks for
+    # this log: a run of instant `exclude`s is the input that produces the
+    # best recall bound this module can report. Judged on the drawn sample
+    # only, so stray later decisions cannot stretch a fast run's time span.
+    sampled = {r: d for r, d in human.items() if r in expected_record_ids}
+    not_human = sorted(f"{r} (screener={d.screener})"
+                       for r, d in sampled.items() if d.screener != "human")
+    if not_human:
+        raise ValueError(
+            "--human log contains decisions not made by a human screener, e.g. "
+            f"{not_human[:5]}; validating the AI against its own log measures nothing"
+        )
+    assert_human_log_is_plausibly_human(sampled)
 
     missing = expected_record_ids - set(human)
     if missing:

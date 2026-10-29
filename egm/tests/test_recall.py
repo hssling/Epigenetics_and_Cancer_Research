@@ -1,4 +1,7 @@
 """Recall validation. This produces a number the registration publishes."""
+import itertools
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from pipeline.recall import clopper_pearson, validate_recall
@@ -42,14 +45,27 @@ def test_zero_n_raises():
 # --- validate_recall --------------------------------------------------------
 
 
-def _decision(path, record_id, decision, screener, confidence=None, criterion=None):
+# A person reaches records one at a time, so human fixtures are stamped 30 s
+# apart; the AI log is written in one go and keeps a single timestamp.
+_human_clock = itertools.count()
+
+
+def _human_stamp(step_seconds=30):
+    start = datetime(2026, 9, 13, 10, 0, tzinfo=timezone.utc)
+    return (start + timedelta(seconds=step_seconds * next(_human_clock))).isoformat()
+
+
+def _decision(path, record_id, decision, screener, confidence=None, criterion=None,
+              decided_at=None):
+    if decided_at is None:
+        decided_at = _human_stamp() if screener == "human" else "2026-09-13T10:00:00Z"
     append_decision(path, ScreeningDecision(
         record_id=record_id, pmid=record_id.split("-")[1], decision=decision,
         criterion=criterion, confidence=confidence,
         reason="r" if screener == "ai" else None, screener=screener,
         model_id="claude-opus-5" if screener == "ai" else None,
         prompt_sha256="a" * 64 if screener == "ai" else None,
-        stage="validation", decided_at="2026-09-13T10:00:00Z", supersedes=None,
+        stage="validation", decided_at=decided_at, supersedes=None,
     ))
 
 
@@ -242,6 +258,61 @@ def test_truncated_ai_log_raises(tmp_path):
 
     with pytest.raises(ValueError, match="no AI decision"):
         validate_recall(human_p, ai_p, expected, {"high": 100})
+
+
+# --- Amendment 7: the human log must pass the agreement gate's checks ------
+
+
+def _screened_pair(tmp_path, n, step_seconds):
+    human_p, ai_p = tmp_path / "h.jsonl", tmp_path / "a.jsonl"
+    start = datetime(2026, 10, 30, 9, 0, tzinfo=timezone.utc)
+    for i in range(n):
+        rid = f"egm-{i}"
+        _decision(ai_p, rid, "exclude", "ai", confidence=0.9, criterion="not_primary")
+        _decision(human_p, rid, "exclude", "human", criterion="not_primary",
+                  decided_at=(start + timedelta(seconds=step_seconds * i)).isoformat())
+    return human_p, ai_p, {f"egm-{i}" for i in range(n)}
+
+
+def test_a_log_faster_than_a_person_can_read_is_refused(tmp_path):
+    """The 2026-10-29 calibration log ran at 1.3 s per record.
+
+    Amendment 7 removed the kappa gate but kept its validity check for the
+    recall sample. Without it, a log of 200 instant `exclude`s would report
+    a perfect recall bound, which is the most favourable number this module
+    can produce.
+    """
+    human_p, ai_p, ids = _screened_pair(tmp_path, 200, step_seconds=1.3)
+    with pytest.raises(ValueError, match="not produced by a person"):
+        validate_recall(human_p, ai_p, ids, {"high": 1000})
+
+
+def test_a_log_at_reading_pace_is_accepted(tmp_path):
+    human_p, ai_p, ids = _screened_pair(tmp_path, 200, step_seconds=20)
+    report = validate_recall(human_p, ai_p, ids, {"high": 1000})
+    assert report.n_validated == 200
+
+
+def test_ai_decisions_in_the_human_log_are_refused(tmp_path):
+    """Passing the AI log as --human would score the model against itself."""
+    ai_p = tmp_path / "a.jsonl"
+    ids = set()
+    for i in range(30):
+        rid = f"egm-{i}"
+        ids.add(rid)
+        _decision(ai_p, rid, "exclude", "ai", confidence=0.9, criterion="not_primary")
+    with pytest.raises(ValueError, match="not made by a human"):
+        validate_recall(ai_p, ai_p, ids, {"high": 1000})
+
+
+def test_timing_is_judged_on_the_drawn_sample_only(tmp_path):
+    """Decisions outside the sample cannot dilute a fast run inside it."""
+    human_p, ai_p, ids = _screened_pair(tmp_path, 200, step_seconds=1.3)
+    # one stray, much later decision stretches the whole log's span
+    _decision(human_p, "egm-99999", "exclude", "human", criterion="not_primary",
+              decided_at="2026-12-31T00:00:00+00:00")
+    with pytest.raises(ValueError, match="not produced by a person"):
+        validate_recall(human_p, ai_p, ids, {"high": 1000})
 
 
 # --- Fix 3: a stratum must never silently vanish or be assumed perfect -----

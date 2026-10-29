@@ -5,6 +5,7 @@ import pytest
 
 from pipeline.draw_sample import (
     draw_calibration,
+    draw_subsample,
     draw_validation,
     screened_text,
     stratum_sizes,
@@ -187,6 +188,88 @@ def test_a_record_that_was_never_batched_refuses_the_draw(tmp_path):
             corpus, decisions, tmp_path / "val.json", {"low": 50}, seed=20260913,
             batches_dir=batches,
         )
+
+
+# --- Amendment 7: the 200 are drawn from the already-drawn 1,000 -------------
+
+
+def _parent_sample(tmp_path, n_low=50, n_mid=30, n_high=20):
+    """A drawn validation sample, plus the AI log it was drawn from."""
+    corpus, decisions = _corpus(tmp_path), tmp_path / "d.jsonl"
+    confidences = [0.2] * n_low + [0.7] * n_mid + [0.95] * n_high
+    for i, confidence in enumerate(confidences):
+        _ai_exclusion(decisions, f"egm-{i:06d}", confidence)
+    parent = tmp_path / "parent.json"
+    draw_validation(
+        corpus, decisions, parent,
+        {"low": n_low, "mid": n_mid, "high": n_high}, seed=20260913,
+        batches_dir=_batches(tmp_path, corpus),
+    )
+    return parent, decisions
+
+
+def test_subsample_takes_the_amended_allocation(tmp_path):
+    parent, decisions = _parent_sample(tmp_path)
+    out = tmp_path / "val_200.json"
+    counts = draw_subsample(
+        parent, decisions, out, {"low": 10, "mid": 6, "high": 4}, seed=20261029
+    )
+
+    assert counts["drawn"] == 20
+    assert counts["population_low"] == 50
+    drawn = json.loads(out.read_text(encoding="utf-8"))
+    parent_ids = {r["record_id"] for r in json.loads(parent.read_text(encoding="utf-8"))}
+    assert {r["record_id"] for r in drawn} <= parent_ids
+    assert sizes_by_stratum(drawn, decisions) == {"low": 10, "mid": 6, "high": 4}
+
+
+def sizes_by_stratum(records, decisions):
+    from pipeline.recall import stratum_of
+    from pipeline.screen_schema import read_decisions
+    conf = {d.record_id: d.confidence for d in read_decisions(decisions)}
+    out = {"low": 0, "mid": 0, "high": 0}
+    for r in records:
+        out[stratum_of(conf[r["record_id"]])] += 1
+    return out
+
+
+def test_subsample_is_reproducible_from_the_seed(tmp_path):
+    parent, decisions = _parent_sample(tmp_path)
+    a, b = tmp_path / "a.json", tmp_path / "b.json"
+    draw_subsample(parent, decisions, a, {"low": 10}, seed=20261029)
+    draw_subsample(parent, decisions, b, {"low": 10}, seed=20261029)
+    assert a.read_text(encoding="utf-8") == b.read_text(encoding="utf-8")
+
+
+def test_subsample_copies_the_parent_records_unchanged(tmp_path):
+    """The parent passed the drift check; the subsample must not re-source text."""
+    parent, decisions = _parent_sample(tmp_path)
+    out = tmp_path / "val_200.json"
+    draw_subsample(parent, decisions, out, {"low": 10, "mid": 6, "high": 4}, seed=1)
+    by_id = {r["record_id"]: r for r in json.loads(parent.read_text(encoding="utf-8"))}
+    for record in json.loads(out.read_text(encoding="utf-8")):
+        assert record == by_id[record["record_id"]]
+
+
+def test_subsample_refuses_a_parent_record_the_ai_did_not_exclude(tmp_path):
+    parent, decisions = _parent_sample(tmp_path)
+    first = json.loads(parent.read_text(encoding="utf-8"))[0]["record_id"]
+    append_decision(decisions, ScreeningDecision(
+        record_id=first, pmid=first.split("-")[1], decision="include",
+        criterion=None, confidence=0.9, reason="r", screener="ai",
+        model_id="claude-opus-5", prompt_sha256="a" * 64, stage="screening",
+        decided_at="2026-09-14T10:00:00Z", supersedes=None,
+    ))
+    with pytest.raises(ValueError, match="not an AI exclusion"):
+        draw_subsample(parent, decisions, tmp_path / "v.json", {"low": 10}, seed=1)
+
+
+def test_subsample_refuses_to_overwrite(tmp_path):
+    parent, decisions = _parent_sample(tmp_path)
+    out = tmp_path / "val_200.json"
+    draw_subsample(parent, decisions, out, {"low": 10}, seed=1)
+    with pytest.raises(FileExistsError):
+        draw_subsample(parent, decisions, out, {"low": 10}, seed=2)
 
 
 def test_screened_text_refuses_a_directory_with_no_batches(tmp_path):

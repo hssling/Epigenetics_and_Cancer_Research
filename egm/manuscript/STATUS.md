@@ -1,6 +1,6 @@
 # Manuscript status: what exists, and what does not
 
-**Date:** 2026-09-17
+**Date:** 2026-10-29 (Amendment 7 filed; sections 1 and 4 updated)
 **Registration:** OSF Registries [3xtf2](https://osf.io/3xtf2) · DOI [10.17605/OSF.IO/3XTF2](https://doi.org/10.17605/OSF.IO/3XTF2)
 
 This document exists because the project it belongs to was created to correct a
@@ -29,9 +29,10 @@ this project's results.
 | **Title/abstract screening** | **Complete — 9,786 / 9,786** | `screening/screening_decisions_sonnet.jsonl` |
 | Model comparison (Opus vs Sonnet) | Complete — 94.1% on 1,700 shared | `screening/model_comparison_opus_vs_sonnet.json` |
 | Validation sample drawn | Complete — 1,000, seeded | `screening/validation_1000.json` |
-| **Calibration: human screening of 300** | **NOT DONE — needs the investigator** | — |
-| **Cohen's kappa / Stage 0 gate** | **NOT PASSED** | — |
-| **Recall validation: human screening of 1,000** | **NOT DONE — needs the investigator** | — |
+| Calibration: human screening of 300 | Attempted 2026-10-29; log failed the timing check; not repeated | `screening/human_calibration_INVALID_2026-10-29.jsonl` (untracked) |
+| Cohen's kappa / Stage 0 gate | **WITHDRAWN** by Amendment 7 — never computed | OSF 3xtf2 update, approved 2026-10-29 |
+| Validation subsample drawn (Amendment 7) | Complete — 200 (100/60/40), seed 20261029 | `screening/validation_200.json` |
+| **Recall validation: human screening of 200** | **NOT DONE — needs the investigator** | — |
 | **Full-text screening** | NOT DONE | — |
 | Coding schema (the extraction instrument) | Complete — built, not yet used | `pipeline/coding_schema.py` |
 | **Coding / data extraction** | NOT DONE — no study coded | — |
@@ -97,6 +98,15 @@ the instrument similarly. It says nothing about whether either agrees with the
 investigator, which is the only question the registered gate asks.
 
 ## 4. What is needed next, and only you can do it
+
+> **Superseded 2026-10-29.** Amendment 7 withdrew Step 1 and reduced Step 2
+> to 200 records. The one remaining step is: screen
+> `screening/validation_200.json` blind (about 1–1.5 hours), then run
+> `pipeline.report_recall` against it — `screening/RUNBOOK.md`, steps 7–8.
+> Section 2 above still describes `report_screening.py` as gated on kappa;
+> that code has not yet been changed to match the amendment, so screening
+> counts remain unreportable until it is. The text below is kept as the
+> record of the registered sequence.
 
 **Step 1 — Calibration (~1.5–2.5 hours).** Screen the 300-record calibration
 sample blind in the local app:

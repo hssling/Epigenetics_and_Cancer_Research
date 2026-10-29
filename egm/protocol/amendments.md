@@ -17,7 +17,7 @@ what existed at that point and what did not.
 | 4 | 2026-09-14 | 5 Screening, Stage 0 | Instrument refined `screening_v2.md` → `screening_v3.md` after calibration round 2 | Round 2 exposed two defects introduced by v2's own wording. See Amendment 4. |
 | 5 | 2026-09-17 | 5 Screening, Stage 2 | Recall-validation confidence strata reset from (<0.5, <0.8) to (<0.66, <0.81) | The registered boundaries left only 16 of 3,767 exclusions in the stratum the design draws 500 from. See Amendment 5. |
 | 6 | 2026-09-17 | 4.1 Information sources | ClinicalTrials.gov searched as a separate registry stream (694 registrations). WHO ICTRP **not** searched. | The registered registry search was outstanding. ICTRP has no endpoint callable unattended; it remains an outstanding manual step. See Amendment 6. |
-| 7 | **DRAFT** — not enacted until filed on OSF | 5 Screening, Stages 0 and 2; 9; 11 | Blind kappa calibration gate withdrawn. Screening becomes AI-led with investigator verification. Recall validation reduced from 1,000 to 200 blind-screened AI-exclusions. | The investigator will not do the registered 300-record blind calibration. A screening design that can actually be executed, and is reported as what it is, is preferable to one that is registered and not carried out. See Amendment 7. |
+| 7 | 2026-10-29 | 5 Screening, Stages 0 and 2; 9; 11 | Blind kappa calibration gate withdrawn. Screening becomes AI-led with investigator verification. Recall validation reduced from 1,000 to 200 blind-screened AI-exclusions. | The investigator will not do the registered 300-record blind calibration. A screening design that can actually be executed, and is reported as what it is, is preferable to one that is registered and not carried out. See Amendment 7. |
 
 ---
 
@@ -454,11 +454,13 @@ inventing exactly the finding this overlay is meant to report.
 
 ---
 
-## Amendment 7 (DRAFT, 2026-10-29): AI-led screening with investigator verification
+## Amendment 7 (enacted 2026-10-29): AI-led screening with investigator verification
 
-> **Status: draft.** This amendment takes effect only when it is filed as an
-> update to OSF registration 3xtf2. Until then the registered design stands,
-> and nothing in this section may be cited as the method used.
+> **Status: filed and approved.** Submitted as an update to OSF registration
+> 3xtf2 at 05:06 UTC on 2026-10-29 and approved at 05:07 UTC (schema response
+> `6ae2d2e5e556501fd0fdef5e`; updated questions: Screening stages, Screening
+> reliability, Sampling). It is the registration's current version. The
+> 200-record validation sample was drawn after approval, not before.
 
 ### What the registration says
 
@@ -531,13 +533,19 @@ Every `unclear` (274) is decided by the investigator.
   strata (populations 790 / 1,369 / 1,608), which keeps the sampling fraction
   falling as confidence rises (12.7% / 4.4% / 2.5%). The allocation and seed
   are fixed here, before the draw.
+- **Drawn** 2026-10-29, after OSF approval, as
+  `screening/validation_200.json` (SHA-256 `a6b922a1…`), by
+  `python -m pipeline.draw_sample subsample`. Records are copied unchanged
+  from `validation_1000.json`, which had already passed the batch-file drift
+  check, so the text the investigator sees is the text the model saw.
 - **Screening:** blind, in `pipeline.screen_app`, which cannot show an AI
   decision and refuses any decision made less than 3 seconds after its record
   is shown. The rule-based keyword highlighting (METHODS 6.3, `TERMS_VERSION`
   1) is permitted; any model-generated summary or suggestion is not.
 - **Validity check:** the human log must pass the existing timing and
   integrity checks in `agreement.py`. A log that fails is reported as failed,
-  not replaced by an assisted one.
+  not replaced by an assisted one. `recall.validate_recall` enforces this
+  (human screener only; the 3-second floor, judged on the drawn records).
 - **Reporting:** the observed false-negative rate, both unweighted and
   stratum-weighted, each with an exact Clopper-Pearson 95% interval. If none
   of the 200 is a false negative, the two-sided upper bound on the

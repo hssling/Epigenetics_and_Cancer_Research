@@ -181,8 +181,9 @@ def assert_human_log_is_plausibly_human(
             f"{span:.0f} seconds ({span / max(len(human), 1):.1f}s each). "
             f"Reading a title and abstract and judging it takes longer than "
             f"{MIN_SECONDS_PER_DECISION:.0f}s, so this log was not produced by "
-            "a person screening records. The Stage 0 gate is kappa against the "
-            "investigator; a transcribed or generated log measures nothing."
+            "a person screening records. Kappa and recall are both measured "
+            "against the investigator; a transcribed or generated log "
+            "measures nothing."
         )
 
 

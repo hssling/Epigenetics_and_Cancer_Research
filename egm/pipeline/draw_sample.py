@@ -168,6 +168,51 @@ def draw_validation(
     }
 
 
+def draw_subsample(
+    parent_path: pathlib.Path,
+    decisions_path: pathlib.Path,
+    out_path: pathlib.Path,
+    per_stratum: dict[str, int],
+    seed: int,
+) -> dict[str, int]:
+    """Draw a smaller validation sample from an already-drawn one (Amendment 7).
+
+    Records are copied from the parent sample as they stand. The parent was
+    checked against the batch files when it was drawn, so re-reading the
+    corpus here could only reintroduce the drift that check exists to stop.
+    A simple random subsample of a stratified random sample is itself a
+    stratified random sample of the population, so the stratum-weighted
+    estimate in `recall.py` applies unchanged.
+    """
+    parent = json.loads(pathlib.Path(parent_path).read_text(encoding="utf-8"))
+    ai = {
+        d.record_id: d for d in read_decisions(decisions_path) if d.screener == "ai"
+    }
+
+    strata: list[str] = []
+    for record in parent:
+        decision = ai.get(record["record_id"])
+        if decision is None or decision.decision != "exclude":
+            raise ValueError(
+                f"{record['record_id']} in {parent_path} is not an AI exclusion "
+                f"in {decisions_path}; recall is estimated from exclusions only"
+            )
+        strata.append(stratum_of(decision.confidence))
+
+    drawn = stratified_sample(parent, strata, per_stratum, seed=seed)
+    _write(out_path, drawn)
+
+    counts = defaultdict(int)
+    for stratum in strata:
+        counts[stratum] += 1
+    return {
+        "parent_size": len(parent),
+        "drawn": len(drawn),
+        "seed": seed,
+        **{f"population_{k}": v for k, v in counts.items()},
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Draw a registered sample")
     sub = parser.add_subparsers(dest="which", required=True)
@@ -192,9 +237,25 @@ def main() -> None:
              "checked against it so a changed corpus cannot be screened blind",
     )
 
+    sub_ = sub.add_parser(
+        "subsample", help="draw a smaller sample from a drawn one (Amendment 7)"
+    )
+    sub_.add_argument("--parent", type=pathlib.Path, required=True)
+    sub_.add_argument("--decisions", type=pathlib.Path, required=True)
+    sub_.add_argument("--out", type=pathlib.Path, required=True)
+    sub_.add_argument("--low", type=int, required=True)
+    sub_.add_argument("--mid", type=int, required=True)
+    sub_.add_argument("--high", type=int, required=True)
+    sub_.add_argument("--seed", type=int, required=True)
+
     args = parser.parse_args()
     if args.which == "calibration":
         counts = draw_calibration(args.corpus, args.out, args.n, args.seed)
+    elif args.which == "subsample":
+        counts = draw_subsample(
+            args.parent, args.decisions, args.out,
+            {"low": args.low, "mid": args.mid, "high": args.high}, args.seed,
+        )
     else:
         counts = draw_validation(
             args.corpus, args.decisions, args.out,
