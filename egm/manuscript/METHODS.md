@@ -235,6 +235,16 @@ is outstanding.
 No substitute exists. `agreement.compare` requires one human log and one AI log
 and refuses an AI-versus-AI comparison, so a second model run cannot stand in.
 
+**Reading aid.** The human screening app highlights criterion-relevant keywords
+in each title and abstract and lists the matched terms by criterion, a reading
+aid of the kind Rayyan and Covidence provide. It uses fixed regular expressions
+(`pipeline/highlight.py`, `TERMS_VERSION` 1), involves no language model,
+produces no score or suggested decision, and cannot load AI decisions; a test
+enforces the last. It points the investigator to where a criterion is
+addressed and decides nothing. Blindness to the model's decisions is
+unaffected, because the highlighting shares nothing with the AI screener but
+the record text itself.
+
 **What the repository verifies, and what it does not.** The analysis code
 enforces a good deal about the human log: that it was produced by a human
 screener, that it covers exactly the registered sample, that the agreement

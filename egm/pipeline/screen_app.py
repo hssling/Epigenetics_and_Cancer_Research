@@ -20,6 +20,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Optional
 from urllib.parse import parse_qs, urlparse
 
+from pipeline import highlight
 from pipeline.screen_schema import (
     CRITERIA,
     CRITERION_LABELS,
@@ -95,8 +96,10 @@ def build_page(
     record: dict[str, Any], position: int, total: int, elapsed_s: float
 ) -> str:
     """Render one record. No AI information is available to this function."""
+    has_abstract = bool(record.get("abstract"))
     abstract = record.get("abstract") or "[no abstract available for this record]"
-    rate = f"{elapsed_s / position:.0f}s/record" if position else "-"
+    year_warning = highlight.year_flag(record.get("year"))
+    rate =f"{elapsed_s / position:.0f}s/record" if position else "-"
     remaining = total - position + 1
     eta = f"{(elapsed_s / position) * remaining / 60:.0f} min left" if position else "-"
 
@@ -123,13 +126,23 @@ def build_page(
  li {{ padding:.15rem 0; }}
  kbd {{ background:#eee; border-radius:3px; padding:.1rem .4rem; font-size:.85rem; }}
  #crit {{ display:none; margin-top:1rem; }}
+ table.sig {{ font-size:.82rem; border-collapse:collapse; margin:0 0 1rem; width:100%; }}
+ table.sig td {{ padding:.15rem .5rem .15rem 0; vertical-align:top; }}
+ table.sig td.c {{ color:#666; white-space:nowrap; }}
+ p.sig {{ font-size:.85rem; color:#666; }}
+ .warn {{ color:#b91c1c; font-weight:600; }}
+ .note {{ color:#888; font-size:.75rem; margin-top:-.5rem; }}
+{highlight.styles()}
 </style>
 <div class="meta"><span>{position} / {total}</span><span>{rate} &middot; {eta}</span></div>
 <div class="bar"><i></i></div>
-<h1>{html.escape(record["title"])}</h1>
+<h1>{highlight.mark(record["title"])}</h1>
 <div class="j">{html.escape(str(record.get("journal") or "-"))} &middot;
- {html.escape(str(record.get("year") or "-"))} &middot; {html.escape(_identifier(record))}</div>
-<div class="a">{html.escape(abstract)}</div>
+ {html.escape(str(record.get("year") or "-"))} &middot; {html.escape(_identifier(record))}
+ {f'&middot; <span class="warn">{html.escape(year_warning)}</span>' if year_warning else ''}</div>
+{highlight.signal_strip(record["title"], record.get("abstract") or "") if has_abstract else ''}
+<p class="note">Keyword matches are places to look, not judgements.</p>
+<div class="a">{highlight.mark(abstract) if has_abstract else html.escape(abstract)}</div>
 <p><kbd>i</kbd> include &nbsp; <kbd>e</kbd> exclude &nbsp; <kbd>u</kbd> unclear</p>
 <div id="crit"><b>Exclusion criterion:</b><ul>{buttons}</ul></div>
 <script>
@@ -218,6 +231,7 @@ def serve(
 
     print(f"Screening {len(state['queue'])} of {total} records.")
     print(f"Open http://127.0.0.1:{port}/  —  keys: i / e / u, then 1-7 on exclude")
+    print(f"Keyword highlighting: pipeline.highlight TERMS_VERSION {highlight.TERMS_VERSION}")
     HTTPServer(("127.0.0.1", port), Handler).serve_forever()
 
 
