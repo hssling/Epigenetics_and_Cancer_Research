@@ -5,7 +5,9 @@ its date and rationale. Nothing is changed silently.
 
 Each amendment below was decided and enacted **before any eligibility result
 existed**, so none can have been shaped by seeing which way a result came out.
-That ordering is the point of this file, not a courtesy.
+That ordering is the point of this file, not a courtesy. Amendment 7 was
+decided after a calibration attempt was refused; its section states exactly
+what existed at that point and what did not.
 
 | # | Date | Section | Change | Rationale |
 |---|---|---|---|---|
@@ -15,6 +17,7 @@ That ordering is the point of this file, not a courtesy.
 | 4 | 2026-09-14 | 5 Screening, Stage 0 | Instrument refined `screening_v2.md` → `screening_v3.md` after calibration round 2 | Round 2 exposed two defects introduced by v2's own wording. See Amendment 4. |
 | 5 | 2026-09-17 | 5 Screening, Stage 2 | Recall-validation confidence strata reset from (<0.5, <0.8) to (<0.66, <0.81) | The registered boundaries left only 16 of 3,767 exclusions in the stratum the design draws 500 from. See Amendment 5. |
 | 6 | 2026-09-17 | 4.1 Information sources | ClinicalTrials.gov searched as a separate registry stream (694 registrations). WHO ICTRP **not** searched. | The registered registry search was outstanding. ICTRP has no endpoint callable unattended; it remains an outstanding manual step. See Amendment 6. |
+| 7 | **DRAFT** — not enacted until filed on OSF | 5 Screening, Stages 0 and 2; 9; 11 | Blind kappa calibration gate withdrawn. Screening becomes AI-led with investigator verification. Recall validation reduced from 1,000 to 200 blind-screened AI-exclusions. | The investigator will not do the registered 300-record blind calibration. A screening design that can actually be executed, and is reported as what it is, is preferable to one that is registered and not carried out. See Amendment 7. |
 
 ---
 
@@ -448,3 +451,151 @@ enforced in the data model rather than by convention: an abandoned 2019
 *projected* completion date says nothing about whether a trial finished, and
 collapsing the two would manufacture overdue trials out of projections —
 inventing exactly the finding this overlay is meant to report.
+
+---
+
+## Amendment 7 (DRAFT, 2026-10-29): AI-led screening with investigator verification
+
+> **Status: draft.** This amendment takes effect only when it is filed as an
+> update to OSF registration 3xtf2. Until then the registered design stands,
+> and nothing in this section may be cited as the method used.
+
+### What the registration says
+
+Protocol Section 5, Stage 0: "The investigator screens all 300 blind; the AI
+screens the same 300 independently. Cohen's kappa computed … Repeated until
+kappa >= 0.75. The final kappa is reported in the manuscript."
+
+Section 5, Stage 2: AI exclusions validated by "a 1,000-record sample,
+stratified by AI confidence … hand-screened blind by the investigator".
+
+Section 11 describes title/abstract screening as "gated by the calibration
+requirement in Section 5 (kappa >= 0.75) and validated against 1,000
+hand-screened AI-excludes".
+
+### What happened
+
+On 2026-10-29 a calibration log for the 300-record sample was produced. It
+recorded 300 decisions, every one `include`, over 378 seconds (1.3 seconds per
+record). The investigator describes it as assisted screening. The agreement
+gate refused it before computing anything, because the log is faster than a
+person can read and judge a title and abstract (`agreement.py`,
+`MIN_SECONDS_PER_DECISION` = 3 s). Separately from timing, a log with no
+variation cannot calibrate anything: if one rater gives a single answer
+throughout, kappa is 0 by construction, whatever the other rater did.
+
+The log is kept, unused, as
+`screening/human_calibration_INVALID_2026-10-29.jsonl`. **No kappa was
+computed, and no comparison between human and AI decisions has been seen by
+anyone.** The investigator has decided not to do the 300-record blind
+calibration.
+
+### What existed when this was decided
+
+| Artefact | State on 2026-10-29 |
+|---|---|
+| AI title/abstract decisions, all 9,786 records | complete, provisional |
+| Inter-model agreement, Opus 5 vs Sonnet 5, 1,700 shared records | 94.1% raw agreement |
+| Human calibration decisions | none valid |
+| Kappa between investigator and model | never computed |
+| Human recall-validation decisions | none |
+| Recall or false-negative estimate | does not exist |
+
+So the change cannot have been tuned towards a favourable kappa or recall,
+because neither has ever existed. It is, however, a weakening of the
+registered design, made because the registered design will not be carried out.
+It is not presented as anything else.
+
+### The change
+
+**Section 5, Stage 0: withdrawn.** There is no kappa gate. In its place:
+
+- The instrument's reliability is reported as **inter-model agreement**: Opus 5
+  vs Sonnet 5 under the identical frozen instrument (`screening_v3.md`, SHA-256
+  `03fc7b73…`), 94.1% on 1,700 records, with the full confusion matrix. It is
+  labelled as model-to-model consistency, and the manuscript says in terms
+  that it is **not** agreement with a human reviewer.
+- No Cohen's kappa against the investigator is reported, because none exists.
+
+**Section 5, Stage 1: unchanged in procedure; its status changes.** The Sonnet
+decisions on all 9,786 records become the screening decisions of record.
+Every AI `include` proceeds to full text, where the investigator makes the
+eligibility decision directly, so false positives remain self-correcting.
+Every `unclear` (274) is decided by the investigator.
+
+**Section 5, Stage 2: reduced from 1,000 to 200, still blind.**
+
+- **Sample:** 200 AI-excluded records, drawn from the existing
+  `screening/validation_1000.json` by `pipeline.sampling.stratified_sample`
+  with **seed 20261029**. Allocation is 100 / 60 / 40 across the Amendment 5
+  strata (populations 790 / 1,369 / 1,608), which keeps the sampling fraction
+  falling as confidence rises (12.7% / 4.4% / 2.5%). The allocation and seed
+  are fixed here, before the draw.
+- **Screening:** blind, in `pipeline.screen_app`, which cannot show an AI
+  decision and refuses any decision made less than 3 seconds after its record
+  is shown. The rule-based keyword highlighting (METHODS 6.3, `TERMS_VERSION`
+  1) is permitted; any model-generated summary or suggestion is not.
+- **Validity check:** the human log must pass the existing timing and
+  integrity checks in `agreement.py`. A log that fails is reported as failed,
+  not replaced by an assisted one.
+- **Reporting:** the observed false-negative rate, both unweighted and
+  stratum-weighted, each with an exact Clopper-Pearson 95% interval. If none
+  of the 200 is a false negative, the two-sided upper bound on the
+  false-negative rate is **1.83%**. Against 3,767 exclusions, that is **up to
+  about 69 eligible studies plausibly missed**. The registered 1,000-record
+  design would have bounded that at 0.37%, about 14 studies. The manuscript
+  states both figures, so the cost of the change is visible.
+- **Extension:** the registered rule still applies. If false negatives are
+  found, they are reported as observed and the sample is extended within the
+  already-drawn 1,000. A poor estimate is reported, not re-run until it looks
+  better.
+
+**Section 9, contingencies.** The row that triggers narrowing to the exposure
+arm when "kappa >= 0.75 … cannot be reached" no longer has a trigger. Narrowing
+to the exposure arm (4,029 records) remains available as a separate scope
+decision, which would need its own amendment.
+
+**Section 11, AI use declaration.** The title/abstract screening bullet is
+replaced with:
+
+> Title/abstract screening (Stage 1) was performed by Claude Sonnet 5 under a
+> frozen instrument. It was not calibrated against a human reviewer. Its
+> consistency was assessed as agreement with a second model (Claude Opus 5,
+> 94.1% on 1,700 records). Its false-negative rate was estimated from 200
+> AI-excluded records screened blind by the investigator (Section 5, Stage
+> 2, as amended). Every AI inclusion and every `unclear` record was decided
+> by the investigator.
+
+### What this costs, stated plainly
+
+- **No human-AI agreement figure.** Readers and reviewers who expect a kappa
+  will not find one. The manuscript says why: a calibration attempt was made,
+  failed the integrity checks, and was not repeated.
+- **A wider recall interval.** The worst case for missed eligible studies rises
+  from about 14 to about 69. For an evidence gap map, whose findings are about
+  where evidence is dense or sparse, a few dozen missing studies against ~5,700
+  provisional AI inclusions is unlikely to change a cell from dense to empty. It could matter
+  for a sparse cell, and the headline sparse-cell claims (the complete
+  A→B→C chain) are worded with that in mind.
+- **Single-reviewer human judgement throughout.** This was already the
+  registered design. It is unchanged, but it is no longer offset by a measured
+  kappa.
+
+These go into the limitations in `manuscript/METHODS.md`, Section 11, and the
+abstract describes screening as "AI-led with investigator verification".
+
+### Text for the OSF update form
+
+> **Amendment 7 — screening validation.** The registered Stage 0 gate
+> (investigator-vs-AI kappa >= 0.75 on 300 blind-screened records) is
+> withdrawn. A calibration attempt on 2026-10-29 did not meet the pipeline's
+> integrity checks and was not repeated; no kappa was ever computed, and no
+> recall estimate existed when this decision was made. Title/abstract
+> screening is AI-led (Claude Sonnet 5, frozen instrument v3). Reliability is
+> reported as inter-model agreement (94.1% vs Claude Opus 5 on 1,700 records),
+> labelled as such. All AI inclusions and all `unclear` records are decided by
+> the investigator. Recall validation is reduced from 1,000 to 200 AI-excluded
+> records (stratified 100/60/40, seed 20261029), screened blind; the
+> false-negative rate is reported with an exact 95% CI alongside the bound the
+> registered design would have given. Full rationale and costs:
+> `egm/protocol/amendments.md`, Amendment 7.
